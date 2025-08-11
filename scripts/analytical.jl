@@ -159,9 +159,9 @@ begin
     end
     cb_stratdiff = Colorbar(fig[1, 2], hm_stratdiff, width=10, height=220, tellheight=true, label="Difference in Population State")
     cb_utildiff = Colorbar(fig[1, 4], hm_utildiff, width=10, tellheight=true, label="Difference in Utility")
-    # for filetype in ("png", "pdf")
-    #     # save("figures/simulation_theoretical_difference.$filetype", fig)
-    # end
+    for filetype in ("png", "pdf")
+        save("figures/simulation_theoretical_difference.$filetype", fig)
+    end
     display(fig)
 end
 

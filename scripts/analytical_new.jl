@@ -74,13 +74,3 @@ begin
     end
     fig
 end
-
-function u(focal_strategy::Integer, strategies, sp)
-    (; c, a, m, ϵD, ϵA) = sp
-    # NP, NA, DP, DA
-    # [0, 0], [0, 1], [1, 0], [1, 1]
-    # 00, 10, 01, 11 (note swapped)
-    R_1 = get_payoff_matrix(c, a, m, ϵD, ϵA)
-    return sum(R_1[focal_strategy+1, i] * strategies[i] for i in 1:4)
-end
-
