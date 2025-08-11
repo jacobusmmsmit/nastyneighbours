@@ -1,3 +1,12 @@
+using StaticArrays
+using Random
+using CairoMakie
+
+includet("../implementation/common.jl")
+includet("../implementation/payoff_from_interaction.jl")
+includet("../implementation/unstructured.jl")
+
+
 
 begin
     Z = 100
@@ -10,7 +19,7 @@ begin
     ϵ_c = 0
     S_initial = rand_S_initial_unstructured(Z)
     up = UnstructuredParameters(Z, β, μ, c_p, c_c, m, ϵ_p, ϵ_c)
-    N = 1_000
+    N = 1_0
 end
 
 m_range = range(1, 4, length=31)
@@ -102,34 +111,8 @@ begin
     rowgap!(ga, 0)
     elements = [MarkerElement(; marker=:rect, color=color, markersize=20) for color in strat_colours]
     Legend(gb[3, 1], elements, labels, "Strategies", orientation=:horizontal)
-    display(fig2)
-end
-
-let
-    c_c = rand(0:1:3)
-    c_p = rand(1:1:4)
-    m = rand(1:1:4)
-    pm = SMatrix{4,4,Float64}(
-        0, 0, m * c_p / 2, 0,
-        -c_c, -c_c, m * c_p - c_c, m * c_p / 2 - c_c,
-        m * c_p / 2 - c_p, -c_p, (m - 1) * c_p, -c_p,
-        (m - 1) * c_p - c_c, m * c_p / 2 - c_p - c_c, 2m * c_p - c_p - c_c, m * c_p - c_p - c_c
-    )'
-
-    # display(pm)
-    for i_produce in false:true, i_claim in false:true, j_produce in false:true, j_claim in false:true
-        # println("---")
-        si_index = 1 + i_claim + 2i_produce
-        sj_index = 1 + j_claim + 2j_produce
-        matrix_res = pm[si_index, sj_index]
-        function_res = payoff_from_interaction(SA[i_claim, i_produce], SA[j_claim, j_produce], c_p, c_c, m, 0, 0)
-        if matrix_res != function_res
-            println("c_c: $c_c, c_p: $c_p, m: $m")
-            common_resource = (i_produce + j_produce) * c_p * m
-            i_partition = (i_claim & !j_claim) + 0.5(!⊻(i_claim, j_claim))
-            println("pot: $common_resource, i get: $i_partition")
-            println("($(common_resource*i_partition)) - $(i_produce*c_p) - $(i_claim*c_c) = $((common_resource*i_partition) - (i_produce*c_p) - (i_claim*c_c))")
-            println("($si_index ($(SA[Int(i_claim), Int(i_produce)]), $sj_index), ($matrix_res, $function_res)")
-        end
+    for filetype in ("png", "pdf")
+        save("figures/fig2.$filetype", fig2)
     end
+    display(fig2)
 end

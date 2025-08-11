@@ -4,3 +4,11 @@ JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
+
+[compat]
+julia = "1.11"
+CairoMakie = "0.14"
+JLD2 = "0.5"
+StaticArrays = "1.9"
+StatsBase = "0.34"
+ThreadsX = "0.1.12"

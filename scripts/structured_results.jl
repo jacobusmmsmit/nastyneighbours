@@ -139,7 +139,7 @@ sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_
 #     display(fig2)
 # end
 
-for α in 0.9:0.1:0.9
+for α in 0.5:0.1:0.9
     # 4x4
     Z_1 = 50
     Z_2 = 50
