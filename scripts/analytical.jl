@@ -88,15 +88,16 @@ begin
 end
 sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_c)
 N_diff = 5_000
-m_range = range(1, 4, length=101)
-c_c_range = range(0, 3, length=101)
+m_range = range(1, 4, length=301)
+c_c_range = range(0, 3, length=301)
+# @load "data/example.jld2" data_AP_MN
 data_AP_MN = map(Iterators.product(m_range, c_c_range)) do (m, c)
     get_AP_MN(m, c, sp, N_diff)
 end
 APs = getindex.(data_AP_MN, :AP)
 MNs = getindex.(data_AP_MN, :MN)
 
-# @save "data_AP_MN.jld2" data_AP_MN
+# @save "data/example.jld2" data_AP_MN
 
 get_strategy_diff(AP, MN) = sum(abs(i - j) for (i, j) in zip(AP, MN))
 function get_util_diff(AP, MN, (m, c_c), sp)
