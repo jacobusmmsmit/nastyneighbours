@@ -31,6 +31,8 @@ juliaup add 1.11
 juliaup default 1.11
 ```
 
+If you don't want to change your defaults, simply replace `julia` with `julia +1.11` in the code snippets below.
+
 The recommended way to use Julia is with a single persistent Julia instance to which lines of code are sent to be compiled and executed.
 The most popular way of doing this is with [VSCode](https://code.visualstudio.com/) and the [Julia extension](https://marketplace.visualstudio.com/items?itemName=julialang.language-julia), but support for [Vim](https://github.com/JuliaEditorSupport/julia-vim), [Emacs](https://github.com/JuliaEditorSupport/julia-emacs) and [other popular editors](https://github.com/JuliaEditorSupport) is also available.
 That said, the our instructions will *not* assume that these tools are installed and will detail how to run each script from the command line, a slower but more universal method.
