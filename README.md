@@ -54,7 +54,7 @@ To run a script from the terminal (not the Julia REPL), navigate to the projects
 julia --project "." path/to/script
 ```
 
-The scripts in `scripts` each reproduce a plot from the main text or supplimentary information:
+The scripts in the `scripts` folder each reproduce a plot from the main text or supplimentary information:
 - `unstructured_results.jl` produces Figure 2
 - `structured_results.jl` produces Figure 4
 - `ESS_regions.jl` produces Appendix Figure 1
