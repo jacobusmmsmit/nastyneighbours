@@ -41,17 +41,26 @@ With `julia` installed and the corresponding command available from the command 
 ```
 git clone https://github.com/jacobusmmsmit/nastyneighbours
 ```
-and navigate to the downloaded folder.
-Then run `julia` and once the Julia REPL is open, go into `Pkg` mode by pressing `]`.
+and navigate to the downloaded folder with
+```
+cd nastyneighbours
+```
 
-Once in `Pkg` mode run ```activate .``` followed by `instantiate` and to install the dependencies at their required versions.
-If not using Julia 1.11 and macOS 14 or if encountering any other error, you should delete the `Manifest.toml` file and rebuild it for your Julia version and operating system by, still in `Pkg` mode, running `resolve`.
+Then install the dependencies at their required versions with
+```
+julia --project=. -e 'import Pkg; Pkg.instantiate()'
+```
+
+If not using Julia 1.11 and macOS 14 or if encountering any other error, you should delete the `Manifest.toml` file and rebuild it for your Julia version and operating system by running
+```
+julia --project=. -e 'import Pkg; Pkg.resolve()'
+```
 
 ## Reproducing results
 
 To run a script from the terminal (not the Julia REPL), navigate to the projects home directory and run
 ```
-julia --project "." path/to/script
+julia --project=. scripts
 ```
 
 The scripts in the `scripts` folder each reproduce a plot from the main text or supplimentary information:
