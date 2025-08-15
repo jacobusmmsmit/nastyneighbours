@@ -2,7 +2,7 @@ using Random
 using StaticArrays
 using StatsBase
 
-includet("payoff_from_interaction.jl")
+include("payoff_from_interaction.jl")
 
 struct UnstructuredParameters
     Z::Int

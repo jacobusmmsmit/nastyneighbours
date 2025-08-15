@@ -2,9 +2,9 @@ using StaticArrays
 using Random
 using CairoMakie
 
-includet("../implementation/common.jl")
-includet("../implementation/payoff_from_interaction.jl")
-includet("../implementation/structured.jl")
+include("../implementation/common.jl")
+include("../implementation/payoff_from_interaction.jl")
+include("../implementation/structured.jl")
 
 begin
     Z_1 = 100

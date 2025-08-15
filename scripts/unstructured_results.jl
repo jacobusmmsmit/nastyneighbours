@@ -2,9 +2,9 @@ using StaticArrays
 using Random
 using CairoMakie
 
-includet("../implementation/common.jl")
-includet("../implementation/payoff_from_interaction.jl")
-includet("../implementation/unstructured.jl")
+include("../implementation/common.jl")
+include("../implementation/payoff_from_interaction.jl")
+include("../implementation/unstructured.jl")
 
 
 
