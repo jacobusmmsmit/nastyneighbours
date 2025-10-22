@@ -1,5 +1,4 @@
-include("../implementation/structured.jl")
-include("../implementation/unstructured.jl")
+using Coevolution
 
 Z_1 = 50
 Z_2 = 0
@@ -12,7 +11,7 @@ end
 
 begin
     β = 1
-    μ = 1 / (Z_1+Z_2)
+    μ = 1 / (Z_1 + Z_2)
     c_p = 1
     c_c = 1
     m_in = 1.5
@@ -35,10 +34,10 @@ for _ in 1:10
     si_structured_idx = sample(1:32, fw)
     si_structured = structured_strategies[si_structured_idx]
     # @show si_structured_idx, si_structured, S_structured[si_structured_idx]
-    si_unstructured = SVector{2,Bool}(si_structured[3], si_structured[4])
+    si_unstructured = SVector{2, Bool}(si_structured[3], si_structured[4])
     aus = average_utility(si_structured, false, S_structured, sp)
     auu = average_utility(si_unstructured, S_unstructured, up)
-    if !(aus≈ auu)
+    if !(aus ≈ auu)
         println("($aus, $auu)")
     end
 end

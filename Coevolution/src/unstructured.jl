@@ -1,9 +1,3 @@
-using Random
-using StaticArrays
-using StatsBase
-
-include("payoff_from_interaction.jl")
-
 struct UnstructuredParameters
     Z::Int
     β::Float64
@@ -15,7 +9,7 @@ struct UnstructuredParameters
     ϵ_c::Float64
 end
 
-function average_utility(si::SVector{2,Bool}, S, up::UnstructuredParameters)
+function average_utility(si::SVector{2, Bool}, S, up::UnstructuredParameters)
     (; Z, c_p, c_c, m, ϵ_p, ϵ_c) = up
     U_si = 0.0
     for (sj_popsize, (sj_claim, sj_produce)) in zip(S, Iterators.product(false:true, false:true))
@@ -42,11 +36,11 @@ function rand_S_initial_unstructured!(res, Z)
     return nothing
 end
 
-function main_simulation_loop(S_initial::AbstractVector{I}, N, up::UnstructuredParameters) where {I<:Integer}
+function main_simulation_loop(S_initial::AbstractVector{I}, N, up::UnstructuredParameters) where {I <: Integer}
     (; Z, μ, β) = up
     S = S_initial
     T = zeros(Int, (4, N)) # Strategy by Agents by Generation
-    strategies = SVector{4,SVector{2,Bool}}(SA[0, 0], SA[1, 0], SA[0, 1], SA[1, 1])
+    strategies = SVector{4, SVector{2, Bool}}(SA[0, 0], SA[1, 0], SA[0, 1], SA[1, 1])
     strategy_weights = FrequencyWeights(S, Z)
     for G in 1:N
         for _ in 1:Z

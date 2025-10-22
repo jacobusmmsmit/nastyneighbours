@@ -2,9 +2,7 @@ using StaticArrays
 using Random
 using CairoMakie
 
-include("../implementation/common.jl")
-include("../implementation/payoff_from_interaction.jl")
-include("../implementation/structured.jl")
+using Coevolution
 
 begin
     Z_1 = 100
@@ -18,11 +16,11 @@ begin
     α = 0.5
     ϵ_p = 0
     ϵ_c = 0
-    N = 100#_000
+    N = 100 #_000
 end
 
-m_range = range(1, 4, length=31)
-c_range = range(0, 3, length=31)
+m_range = range(1, 4, length = 31)
+c_range = range(0, 3, length = 31)
 S_initial = rand_S_initial_structured(Z_1, Z_2)
 sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_c)
 
@@ -151,16 +149,13 @@ for α in 0.5:0.1:0.9
         rand_S_initial_structured!(S_initial, Z_1, Z_2)
         sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_c)
         strategy_count_by_generation = main_simulation_loop(S_initial, N, sp)
-        v = vec(mean(strategy_count_by_generation; dims=2))
+        v = vec(mean(strategy_count_by_generation; dims = 2))
         sum(v[1:16]) ≈ sum(v[17:32]) || error("$(sum(v[1:16])) != $(sum(v[17:32]))")
         v[1:16] + v[17:32]
     end
 
-
-
-
     # sj_claim_out, sj_produce_out, sj_claim_in, sj_produce_in
-    structured_strategies = SVector{16,SVector{4,Bool}}(
+    structured_strategies = SVector{16, SVector{4, Bool}}(
         SA[0, 0, 0, 0], SA[1, 0, 0, 0], SA[0, 1, 0, 0], SA[1, 1, 0, 0],
         SA[0, 0, 1, 0], SA[1, 0, 1, 0], SA[0, 1, 1, 0], SA[1, 1, 1, 0],
         SA[0, 0, 0, 1], SA[1, 0, 0, 1], SA[0, 1, 0, 1], SA[1, 1, 0, 1],
@@ -168,16 +163,18 @@ for α in 0.5:0.1:0.9
     )
 
 
-    output_matrix = reshape([
+    output_matrix = reshape(
+        [
             getindex.(mean_strategy_count_matrix_grouped, i)
-            for i in 1:16
-        ], 4, 4)
+                for i in 1:16
+        ], 4, 4
+    )
 
     cmaps = [getindex(cgrads, group) for group in [1, 2, 3, 4, 2, 2, 4, 4, 3, 4, 3, 4, 4, 4, 4, 4]]
 
     begin
         figsize = (620, 600)
-        fig = Figure(; size=figsize)
+        fig = Figure(; size = figsize)
         gl = fig[1, 1] = GridLayout()
         axs = []
         hms = []
@@ -187,7 +184,7 @@ for α in 0.5:0.1:0.9
             i_claim = 5 - (1 + co + 2ci)
             j_produce = 1 + po + 2p_i
             println("$idx: ($(Int(co)), $(Int(po)), $(Int(ci)), $(Int(p_i))): at ($i_claim, $j_produce)")
-            ax = Axis(gl[i_claim, j_produce]; aspect=1)#,title="$idx"
+            ax = Axis(gl[i_claim, j_produce]; aspect = 1) #,title="$idx"
             ax.xlabel = "In-Multiplier"
             ax.ylabel = "Claiming cost"
             push!(axs, ax)
@@ -203,32 +200,32 @@ for α in 0.5:0.1:0.9
             end
             if j_produce == 1
                 label = ["Share", "Out-Claim", "In-Claim", "Uni-Claim"][i_claim]
-                Label(gl[5-i_claim, 0, Makie.Right()], label; padding=(0, 5, 0, 0), rotation=π / 2, font=:bold)
+                Label(gl[5 - i_claim, 0, Makie.Right()], label; padding = (0, 5, 0, 0), rotation = π / 2, font = :bold)
             end
             if i_claim == 4
                 label = ["Free-ride", "Out-Prod", "In-Prod", "Uni-Prod"][j_produce]
-                Label(gl[5, j_produce, Makie.Top()], label; padding=(0, 0, 0, 5), font=:bold)
+                Label(gl[5, j_produce, Makie.Top()], label; padding = (0, 0, 0, 5), font = :bold)
             end
             hm = heatmap!(
                 ax,
                 m_range,
                 c_range,
                 output_matrix[idx],
-                colorrange=(0, Z_1 + Z_2),
-                colormap=cmaps[idx]
+                colorrange = (0, Z_1 + Z_2),
+                colormap = cmaps[idx]
             )
-            vl = vlines!(ax, [1.5], color=:black, linestyle=:dash)
+            vl = vlines!(ax, [1.5], color = :black, linestyle = :dash)
             push!(hms, hm)
         end
 
-        Label(gl[2:3, 0, Makie.Left()], "Group-dependent Claiming", padding=(-10, 0, 0, 0), rotation=π / 2, font=:bold)
-        Label(gl[5, 2:3, Makie.Bottom()], "Group-dependent Production", padding=(0, 0, -5, 0), rotation=0, font=:bold)
+        Label(gl[2:3, 0, Makie.Left()], "Group-dependent Claiming", padding = (-10, 0, 0, 0), rotation = π / 2, font = :bold)
+        Label(gl[5, 2:3, Makie.Bottom()], "Group-dependent Production", padding = (0, 0, -5, 0), rotation = 0, font = :bold)
 
-        Colorbar(gl[1, 5], hms[4], label="")
-        Colorbar(gl[2, 5], hms[2], label="")
-        Colorbar(gl[3, 5], hms[3], label="")
-        Colorbar(gl[4, 5], hms[1], label="")
-        Label(gl[1:4, 5, Makie.Right()], "Strategy proportion of population"; padding=(0, -50, 0, 0), rotation=3π / 2)
+        Colorbar(gl[1, 5], hms[4], label = "")
+        Colorbar(gl[2, 5], hms[2], label = "")
+        Colorbar(gl[3, 5], hms[3], label = "")
+        Colorbar(gl[4, 5], hms[1], label = "")
+        Label(gl[1:4, 5, Makie.Right()], "Strategy proportion of population"; padding = (0, -50, 0, 0), rotation = 3π / 2)
         yspace = maximum(tight_yticklabel_spacing!, axs)
         xspace = maximum(tight_xticklabel_spacing!, axs)
         for ax in axs
@@ -238,29 +235,29 @@ for α in 0.5:0.1:0.9
         for (xbounds, ybounds) in [(1:3, 1:1), (1:3, 2:4), (4:4, 1:1), (4:4, 2:4)]
             b = Box(
                 gl[xbounds, ybounds, Makie.GridLayoutBase.Outer()],
-                alignmode=Outside(-7, -7, -7, -7),
-                cornerradius=3,
-                strokewidth=1.2,
+                alignmode = Outside(-7, -7, -7, -7),
+                cornerradius = 3,
+                strokewidth = 1.2,
                 # linestyle=:dash,
-                color=(:black, 0.0),
+                color = (:black, 0.0),
             )
             translate!(b.blockscene, 0, 0, -202)
         end
         highlight_horizontal = Box(
             gl[2:3, 0:4, Makie.GridLayoutBase.Outer()],
-            alignmode=Outside(-10, -5, -5, -5),
-            cornerradius=0,
-            strokewidth=0,
+            alignmode = Outside(-10, -5, -5, -5),
+            cornerradius = 0,
+            strokewidth = 0,
             # linestyle=:dash,
-            color=(:red, 0.1),
+            color = (:red, 0.1),
         )
         highlight_vertical = Box(
             gl[1:5, 2:3, Makie.GridLayoutBase.Outer()],
-            alignmode=Outside(-3, -3, -10, 20),
-            cornerradius=0,
-            strokewidth=0,
+            alignmode = Outside(-3, -3, -10, 20),
+            cornerradius = 0,
+            strokewidth = 0,
             # linestyle=:dash,
-            color=(:red, 0.1),
+            color = (:red, 0.1),
         )
         translate!(highlight_horizontal.blockscene, 0, 0, -200)
         translate!(highlight_vertical.blockscene, 0, 0, -201)
@@ -284,14 +281,14 @@ for α in 0.5:0.1:0.9
         colsize!(gl, 0, Relative(0.05))
         rowsize!(gl, 5, Relative(0.05))
         label_options = (;
-            padding=(0, 0, 10, 0),
-            justification=:left,
-            halign=:left,
-            font=:bold,
+            padding = (0, 0, 10, 0),
+            justification = :left,
+            halign = :left,
+            font = :bold,
         )
-        Label(gl[1, 1, Makie.Top()], "A: Claimers"; label_options..., padding=(-35, 0, 10, 0))
+        Label(gl[1, 1, Makie.Top()], "A: Claimers"; label_options..., padding = (-35, 0, 10, 0))
         Label(gl[1, 2:4, Makie.Top()], "B: Produce-Claimers"; label_options...)
-        Label(gl[4, 1, Makie.Top()], "C: Freeriders"; label_options..., padding=(-35, 0, 10, 0))
+        Label(gl[4, 1, Makie.Top()], "C: Freeriders"; label_options..., padding = (-35, 0, 10, 0))
         Label(gl[4, 2:4, Makie.Top()], "D: Producers"; label_options...)
         # Colorbar(fig[:, 3], hms[1], colorrange=(0, 1), label="Number of agents")
         for filetype in ("png", "pdf")
