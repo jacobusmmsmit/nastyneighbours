@@ -2,9 +2,11 @@ using StaticArrays
 using Random
 using CairoMakie
 
-include("../implementation/common.jl")
-include("../implementation/payoff_from_interaction.jl")
-include("../implementation/unstructured.jl")
+# include("../implementation/common.jl")
+# include("../implementation/payoff_from_interaction.jl")
+# include("../implementation/unstructured.jl")
+
+using Coevolution
 
 
 begin

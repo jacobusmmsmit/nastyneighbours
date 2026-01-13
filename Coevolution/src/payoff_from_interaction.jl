@@ -1,4 +1,4 @@
-function strategic_errors(s::SVector{2, Bool}, ϵD, ϵA)
+function strategic_errors(s::SVector{2,Bool}, ϵD, ϵA)
     bins = SVector{4}(to_bin(i) for i in 0:3)
     # NP, NA, DP, DA
     return map(bins) do b
@@ -13,7 +13,7 @@ function strategic_errors(strat::Integer, ϵD, ϵA)
 end
 
 
-function payoff_from_interaction_old(si::SVector{2, Bool}, sj::SVector{2, Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
+function payoff_from_interaction_old(si::SVector{2,Bool}, sj::SVector{2,Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
     i_claim, i_produce = si
     j_claim, j_produce = sj
     common_resource = (i_produce + j_produce) * c_p * m
@@ -36,15 +36,18 @@ function get_payoff_matrix(c_p, c_c, m, ϵ_p, ϵ_c)
         (m * c_p) / 2 - c_p -c_p m * (2c_p) / 2 - c_p -c_p;
         m * c_p - c_p - c_c (m * c_p) / 2 - c_p - c_c m * (2c_p) - c_p - c_c m * (2c_p) / 2 - c_p - c_c
     ]
-    R̃ = @SMatrix [
+    return add_errors_to_payoff_matrix(R, ϵ_p, ϵ_c)
+end
+
+function add_errors_to_payoff_matrix(payoff_matrix, ϵ_p, ϵ_c)
+    return @SMatrix [
         begin
-                my_errors = SMatrix{4, 4, Float64}(repeat_vector(strategic_errors(i - 1, ϵ_p, ϵ_c)))
-                their_errors = SMatrix{4, 4, Float64}(repeat_vector(strategic_errors(j - 1, ϵ_p, ϵ_c)))
-                likelihoods = my_errors * (their_errors') / 4
-                sum(R .* likelihoods)
-            end for i in 1:4, j in 1:4
+            my_errors = SMatrix{4, 4, Float64}(repeat_vector(strategic_errors(i - 1, ϵ_p, ϵ_c)))
+            their_errors = SMatrix{4, 4, Float64}(repeat_vector(strategic_errors(j - 1, ϵ_p, ϵ_c)))
+            likelihoods = my_errors * (their_errors') / 4
+            sum(payoff_matrix .* likelihoods)
+        end for i in 1:4, j in 1:4
     ]
-    return R̃
 end
 
 function payoff_from_interaction(si::SVector{2, Bool}, sj::SVector{2, Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
