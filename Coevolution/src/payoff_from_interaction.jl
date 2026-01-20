@@ -13,30 +13,27 @@ function strategic_errors(strat::Integer, ϵD, ϵA)
 end
 
 
-function payoff_from_interaction_old(si::SVector{2,Bool}, sj::SVector{2,Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
-    i_claim, i_produce = si
-    j_claim, j_produce = sj
-    common_resource = (i_produce + j_produce) * c_p * m
-    i_partition = (i_claim & !j_claim) + 0.5(!xor(i_claim, j_claim))
-    return common_resource * i_partition - (i_produce * c_p) - (i_claim * c_c)
-end
+# function payoff_from_interaction_old(si::SVector{2,Bool}, sj::SVector{2,Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
+#     i_claim, i_produce = si
+#     j_claim, j_produce = sj
+#     common_resource = (i_produce + j_produce) * c_p * m
+#     i_partition = (i_claim & !j_claim) + 0.5(!xor(i_claim, j_claim))
+#     return common_resource * i_partition - (i_produce * c_p) - (i_claim * c_c)
+# end
 
-function get_payoff_matrix(c_p, c_c, m, ϵ_p, ϵ_c)
+function get_payoff_matrix(pot::AbstractVector, c::Float64, vs::AbstractVector{Float64}, as::AbstractVector{Float64})
+    vN, vC, vP, vPC = vs
+    aN, aC, aP, aPC = as
     #! format: off
-    # full_payoff_matrix = SA[
-    #     0          0            m*c/2       0;
-    #     -a         -a           m*c-a        m*c/2-a;
-    #     (m*c)/2-c -c           m*(2c)/2-c -c;
-    #     m*c-c-a    (m*c)/2-c-a m*(2c)-c-a  m*(2c)/2-c-a
-    # ]
-    #! format on
-    R = SA[
-        0 0 m * c_p / 2 0;
-        -c_c -c_c m * c_p - c_c m * c_p / 2 - c_c;
-        (m * c_p) / 2 - c_p -c_p m * (2c_p) / 2 - c_p -c_p;
-        m * c_p - c_p - c_c (m * c_p) / 2 - c_p - c_c m * (2c_p) - c_p - c_c m * (2c_p) / 2 - c_p - c_c
+    payoff_matrix = SA[
+        pot[1]/2                     1/2*(1 - vN)*pot[1]                 pot[2]/2                     1/2*(1 - vN)*pot[2];
+        -aN + 1/2*(1 + vN)*pot[1]    -aC + pot[1]/2                      -aP + 1/2*(1 + vP)*pot[2]    -aPC + 1/2*(1 - vC + vPC)*pot[2];
+        -c + pot[2]/2                -c + 1/2*(1 - vP)*pot[2]            -c + pot[3]/2                -c + 1/2*(1 - vP)*pot[3];
+        -aN - c + 1/2*(1 + vN)*pot[2]  -aC - c + 1/2*(1 + vC - vPC)*pot[2]  -aP - c + 1/2*(1 + vP)*pot[3]  -aPC - c + pot[3]/2
     ]
-    return add_errors_to_payoff_matrix(R, ϵ_p, ϵ_c)
+    #! format on
+    return payoff_matrix
+    
 end
 
 function add_errors_to_payoff_matrix(payoff_matrix, ϵ_p, ϵ_c)
@@ -50,11 +47,12 @@ function add_errors_to_payoff_matrix(payoff_matrix, ϵ_p, ϵ_c)
     ]
 end
 
-function payoff_from_interaction(si::SVector{2, Bool}, sj::SVector{2, Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
-    payoff_matrix = get_payoff_matrix(c_p, c_c, m, ϵ_p, ϵ_c)
+function payoff_from_interaction(si::SVector{2, Bool}, sj::SVector{2, Bool}, payoff_matrix_with_errors)
     i_claim, i_produce = si
     j_claim, j_produce = sj
     i_idx = 1 + i_claim + 2i_produce
     j_idx = 1 + j_claim + 2j_produce
-    return payoff_matrix[i_idx, j_idx]
+    return payoff_matrix_with_errors[i_idx, j_idx]
 end
+
+get_pot(b0,b1,b2) = SA[b0*b0, b0*(b0+b1), (b0+b2)*(b0+b2)]

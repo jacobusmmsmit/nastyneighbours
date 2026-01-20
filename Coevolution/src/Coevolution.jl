@@ -9,7 +9,7 @@ using CairoMakie
 export one_at, to_bin, repeat_vector
 include("helper_functions.jl")
 
-export strategic_errors, get_payoff_matrix, payoff_from_interaction
+export strategic_errors, get_payoff_matrix, payoff_from_interaction, get_pot
 include("payoff_from_interaction.jl")
 
 export labels, strat_colours, cgrads

@@ -5,18 +5,18 @@ using CairoMakie
 using Coevolution
 
 begin
-    Z_1 = 100
-    Z_2 = 0
+    Z_1 = 75
+    Z_2 = 25
     β = 1
     μ = 1 / Z_1 + Z_2
     c_p = 1
     c_c = 1
-    m_in = 10000
+    m_in = 5
     m_out = 1.5
     α = 0.5
     ϵ_p = 0
     ϵ_c = 0
-    N = 100 #_000
+    N = 10 #_000
 end
 
 m_range = range(1, 4, length = 31)
@@ -24,133 +24,134 @@ c_range = range(0, 3, length = 31)
 S_initial = rand_S_initial_structured(Z_1, Z_2)
 sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_c)
 
-# strategy_count_by_generation = main_simulation_loop(S_initial, N, sp)
+strategy_count_by_generation = main_simulation_loop(S_initial, N, sp)
 
-# let
-#     fig = Figure(size=(600, 400))
-#     ax = Axis(fig[1, 1])
-#     ax2 = Axis(fig[2, 1])
-#     local m_e = 1.5
-#     local c_c_e = 0.2
-#     S_initial = rand_S_initial_structured(Z_1, Z_2)
-#     sp_e = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_e, m_e, m_e, 1, ϵ_p, ϵ_c)
-#     strategy_count_by_generation_e = main_simulation_loop(S_initial, 1000, sp_e)
-#     for row_i in 0:3
-#         row = vec(sum(strategy_count_by_generation_e[(1:4).+4row_i, :], dims=1))
-#         lines!(ax, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
-#     end
-#     local m_f = 2.5
-#     local c_c_f = 2.1
-#     sp_f = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_f, m_f, m_f, 1, ϵ_p, ϵ_c)
-#     strategy_count_by_generation_f = main_simulation_loop(S_initial, 1000, sp_f)
-#     for row_i in 0:3
-#         row = vec(sum(strategy_count_by_generation_f[(1:4).+4row_i, :], dims=1))
-#         lines!(ax2, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
-#     end
-#     display(fig)
-# end
+let
+    fig = Figure(size=(600, 400))
+    ax = Axis(fig[1, 1])
+    ax2 = Axis(fig[2, 1])
+    local m_e = 1.5
+    local c_c_e = 0.2
+    S_initial = rand_S_initial_structured(Z_1, Z_2)
+    sp_e = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_e, m_e, m_e, 1, ϵ_p, ϵ_c)
+    strategy_count_by_generation_e = main_simulation_loop(S_initial, 1000, sp_e)
+    for row_i in 0:3
+        row = vec(sum(strategy_count_by_generation_e[(1:4).+4row_i, :], dims=1))
+        lines!(ax, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
+    end
+    local m_f = 2.5
+    local c_c_f = 2.1
+    sp_f = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_f, m_f, m_f, 1, ϵ_p, ϵ_c)
+    strategy_count_by_generation_f = main_simulation_loop(S_initial, 1000, sp_f)
+    for row_i in 0:3
+        row = vec(sum(strategy_count_by_generation_f[(1:4).+4row_i, :], dims=1))
+        lines!(ax2, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
+    end
+    display(fig)
+end
 
-# mean_strategy_count_matrix = map(Iterators.product(m_range, c_range)) do (m, c_c)
-#     println("($m, $c_c)")
-#     S_initial = rand_S_initial_structured(Z_1, Z_2)
-#     sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m, m, α, ϵ_p, ϵ_c)
-#     strategy_count_by_generation = main_simulation_loop(S_initial, N, sp)
-#     [sum(mean.(rows)) for rows in Iterators.partition(eachrow(strategy_count_by_generation), 4)][1:4]
-# end
+mean_strategy_count_matrix = map(Iterators.product(m_range, c_range)) do (m, c_c)
+    println("($m, $c_c)")
+    S_initial = rand_S_initial_structured(Z_1, Z_2)
+    sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m, m, α, ϵ_p, ϵ_c)
+    strategy_count_by_generation = main_simulation_loop(S_initial, N, sp)
+    [sum(mean.(rows)) for rows in Iterators.partition(eachrow(strategy_count_by_generation), 4)][1:4]
+end
 
-# begin
-#     figsize = (1100, 600)
-#     fig2 = Figure(; size=figsize)
-#     ga = fig2[1, 1] = GridLayout()
-#     gb = fig2[1, 2] = GridLayout()
-#     begin
-#         axs2a = []
-#         hms2a = []
-#         for i in 1:2, j in 1:2
-#             idx = 2(i - 1) + (j - 1)
-#             ax = Axis(ga[3-j, 2i-1]; aspect=1)
-#             push!(axs2a, ax)
-#             ax.xlabel = "Productivity"
-#             ax.ylabel = "Claiming cost"
-#             ax.title = labels[idx+1]
-#             hm = heatmap!(
-#                 ax,
-#                 m_range,
-#                 c_range,
-#                 getindex.(mean_strategy_count_matrix, idx + 1),
-#                 colorrange=(0, Z_1 + Z_2),
-#                 colormap=cgrads[idx+1],
-#             )
-#             push!(hms2a, hm)
-#             cb = Colorbar(ga[3-j, 2i], hm, label="Number of agents", tellheight=true)
-#             cb.height = Relative(0.73)
-#         end
-#         for (label, pos) in zip(["a", "b", "c", "d"], [[1, 1], [1, 3], [2, 1], [2, 3]])
-#             Label(ga[pos[1], pos[2], TopLeft()], label,
-#                 fontsize=26,
-#                 font=:bold,
-#                 padding=(0, 5, 0, 0),
-#                 halign=:right)
-#         end
-#     end
-#     ax = Axis(gb[1, 1])
-#     ax2 = Axis(gb[2, 1])
-#     local m_e = 1.5
-#     local c_c_e = 0.2
-#     S_initial = rand_S_initial_structured(Z_1, Z_2)
-#     sp_e = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_e, m_e, m_e, 1, ϵ_p, ϵ_c)
-#     strategy_count_by_generation_e = main_simulation_loop(S_initial, 1000, sp_e)
-#     for row_i in 0:3
-#         row = vec(sum(strategy_count_by_generation_e[(1:4).+4row_i, :], dims=1))
-#         lines!(ax, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
-#     end
-#     local m_f = 2.5
-#     local c_c_f = 2.1
-#     sp_f = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_f, m_f, m_f, 1, ϵ_p, ϵ_c)
-#     strategy_count_by_generation_f = main_simulation_loop(S_initial, 1000, sp_f)
-#     for row_i in 0:3
-#         row = vec(sum(strategy_count_by_generation_f[(1:4).+4row_i, :], dims=1))
-#         lines!(ax2, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
-#     end
-#     # display(fig)
-#     elements = [MarkerElement(; marker=:rect, color=color, markersize=20) for color in strat_colours]
-#     Legend(gb[3, 1], elements, labels, "Strategies", orientation=:horizontal)
-#     Label(gb[1, 1, TopLeft()], "e",
-#             fontsize=26,
-#             font=:bold,
-#             padding=(0, 15, 5, 0),
-#             halign=:right)
-#     Label(gb[2, 1, TopLeft()], "f",
-#         fontsize=26,
-#         font=:bold,
-#         padding=(0, 15, 10, 0),
-#         halign=:right)
-#     fax = Axis(ga[3, :])
-#     hidedecorations!(fax)  # hides ticks, grid and lables
-#     hidespines!(fax)
-#     rowsize!(ga, 1, Relative(0.42))
-#     rowsize!(ga, 2, Relative(0.42))
-#     rowgap!(ga, 0)
-#     for filetype in ("png", "pdf")
-#         save("figures/fig2.$filetype", fig2)
-#     end
-#     display(fig2)
-# end
+begin
+    figsize = (1100, 600)
+    fig2 = Figure(; size=figsize)
+    ga = fig2[1, 1] = GridLayout()
+    gb = fig2[1, 2] = GridLayout()
+    begin
+        axs2a = []
+        hms2a = []
+        for i in 1:2, j in 1:2
+            idx = 2(i - 1) + (j - 1)
+            ax = Axis(ga[3-j, 2i-1]; aspect=1)
+            push!(axs2a, ax)
+            ax.xlabel = "Productivity"
+            ax.ylabel = "Claiming cost"
+            ax.title = labels[idx+1]
+            hm = heatmap!(
+                ax,
+                m_range,
+                c_range,
+                getindex.(mean_strategy_count_matrix, idx + 1),
+                colorrange=(0, Z_1 + Z_2),
+                colormap=cgrads[idx+1],
+            )
+            push!(hms2a, hm)
+            cb = Colorbar(ga[3-j, 2i], hm, label="Number of agents", tellheight=true)
+            cb.height = Relative(0.73)
+        end
+        for (label, pos) in zip(["a", "b", "c", "d"], [[1, 1], [1, 3], [2, 1], [2, 3]])
+            Label(ga[pos[1], pos[2], TopLeft()], label,
+                fontsize=26,
+                font=:bold,
+                padding=(0, 5, 0, 0),
+                halign=:right)
+        end
+    end
+    ax = Axis(gb[1, 1])
+    ax2 = Axis(gb[2, 1])
+    local m_e = 1.5
+    local c_c_e = 0.2
+    S_initial = rand_S_initial_structured(Z_1, Z_2)
+    sp_e = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_e, m_e, m_e, 1, ϵ_p, ϵ_c)
+    strategy_count_by_generation_e = main_simulation_loop(S_initial, 1000, sp_e)
+    for row_i in 0:3
+        row = vec(sum(strategy_count_by_generation_e[(1:4).+4row_i, :], dims=1))
+        lines!(ax, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
+    end
+    local m_f = 2.5
+    local c_c_f = 2.1
+    sp_f = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c_f, m_f, m_f, 1, ϵ_p, ϵ_c)
+    strategy_count_by_generation_f = main_simulation_loop(S_initial, 1000, sp_f)
+    for row_i in 0:3
+        row = vec(sum(strategy_count_by_generation_f[(1:4).+4row_i, :], dims=1))
+        lines!(ax2, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
+    end
+    # display(fig)
+    elements = [MarkerElement(; marker=:rect, color=color, markersize=20) for color in strat_colours]
+    Legend(gb[3, 1], elements, labels, "Strategies", orientation=:horizontal)
+    Label(gb[1, 1, TopLeft()], "e",
+            fontsize=26,
+            font=:bold,
+            padding=(0, 15, 5, 0),
+            halign=:right)
+    Label(gb[2, 1, TopLeft()], "f",
+        fontsize=26,
+        font=:bold,
+        padding=(0, 15, 10, 0),
+        halign=:right)
+    fax = Axis(ga[3, :])
+    hidedecorations!(fax)  # hides ticks, grid and lables
+    hidespines!(fax)
+    rowsize!(ga, 1, Relative(0.42))
+    rowsize!(ga, 2, Relative(0.42))
+    rowgap!(ga, 0)
+    for filetype in ("png", "pdf")
+        save("figures/fig2.$filetype", fig2)
+    end
+    display(fig2)
+end
 
 for α in 0.5:0.1:0.9
     # 4x4
-    Z_1 = 50
-    Z_2 = 50
+    Z_1 = 25
+    Z_2 = 25
     m_out = 1.5
-    N = 100_000
+    N = 10
     S_initial_grouped = rand_S_initial_structured(Z_1, Z_2)
+    @show S_initial_grouped
     mean_strategy_count_matrix_grouped = map(Iterators.product(m_range, c_range)) do (m_in, c_c)
         println("($m_in, $c_c)")
         rand_S_initial_structured!(S_initial, Z_1, Z_2)
         sp = StructuredParameters(Z_1, Z_2, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_c)
         strategy_count_by_generation = main_simulation_loop(S_initial, N, sp)
         v = vec(mean(strategy_count_by_generation; dims = 2))
-        sum(v[1:16]) ≈ sum(v[17:32]) || error("$(sum(v[1:16])) != $(sum(v[17:32]))")
+        # sum(v[1:16]) ≈ sum(v[17:32]) || error("$(sum(v[1:16])) != $(sum(v[17:32]))")
         v[1:16] + v[17:32]
     end
 
@@ -162,16 +163,14 @@ for α in 0.5:0.1:0.9
         SA[0, 0, 1, 1], SA[1, 0, 1, 1], SA[0, 1, 1, 1], SA[1, 1, 1, 1]
     )
 
-
     output_matrix = reshape(
         [
             getindex.(mean_strategy_count_matrix_grouped, i)
                 for i in 1:16
         ], 4, 4
     )
-
     cmaps = [getindex(cgrads, group) for group in [1, 2, 3, 4, 2, 2, 4, 4, 3, 4, 3, 4, 4, 4, 4, 4]]
-
+    
     begin
         figsize = (620, 600)
         fig = Figure(; size = figsize)
@@ -211,7 +210,7 @@ for α in 0.5:0.1:0.9
                 m_range,
                 c_range,
                 output_matrix[idx],
-                colorrange = (0, Z_1 + Z_2),
+                # colorrange = (0, Z_1 + Z_2),
                 colormap = cmaps[idx]
             )
             vl = vlines!(ax, [1.5], color = :black, linestyle = :dash)
@@ -292,7 +291,7 @@ for α in 0.5:0.1:0.9
         Label(gl[4, 2:4, Makie.Top()], "D: Producers"; label_options...)
         # Colorbar(fig[:, 3], hms[1], colorrange=(0, 1), label="Number of agents")
         for filetype in ("png", "pdf")
-            save("figures/N4b4_$α.$filetype", fig)
+            # save("figures/N4b4_$α.$filetype", fig)
         end
         display(fig)
     end

@@ -8,9 +8,8 @@ using CairoMakie
 
 using Coevolution
 
-
 begin
-    Z = 100
+    Z = 1000
     β = 1
     μ = 1 / Z
     c_p = 1
@@ -18,9 +17,10 @@ begin
     m = 2
     ϵ_p = 0
     ϵ_c = 0
-    S_initial = rand_S_initial_unstructured(Z)
-    up = UnstructuredParameters(Z, β, μ, c_p, c_c, m, ϵ_p, ϵ_c)
-    N = 1_0
+    # S_initial = rand_S_initial_unstructured(Z)
+    # pot = SA[0, m*c_p, (m*c_p)^2]
+    up = UnstructuredParameters(Z, β, μ, c_p, SA[1,1,1,1], SA[c_c, c_c, 0.5c_c, 0.5c_c], pot, ϵ_p, ϵ_c)
+    N = 30_0
 end
 
 m_range = range(1, 4, length = 31)
@@ -30,7 +30,8 @@ S_initial = rand_S_initial_unstructured(Z)
 mean_strategy_count_matrix = map(Iterators.product(m_range, c_range)) do (m, c_c)
     println("($m, $c_c)")
     rand_S_initial_unstructured!(S_initial, Z)
-    up = UnstructuredParameters(Z, β, μ, c_p, c_c, m, ϵ_p, ϵ_c)
+    pot = get_pot(1, m*c_p, m*c_p)
+    up = UnstructuredParameters(Z, β, μ, c_p, SA[1,0,1,1], SA[c_c, c_c, c_c, c_c], pot, ϵ_p, ϵ_c)
     strategy_count_by_generation = main_simulation_loop(S_initial, N, up)
     vec(mean(strategy_count_by_generation; dims = 2))
 end
@@ -73,29 +74,36 @@ begin
                 )
             end
         end
-        display(fig2)
+        # display(fig2)
     end
     N_lineplots = 1_000
+
     begin
-        ax = Axis(gb[2, 1], title = "Productivity: 2.5, Claiming Cost: 2.1", xlabel = "Generation", ylabel = "Strategy prevalence")
-        m_e = 2.5
-        c_c_e = 2.1
-        up_e = UnstructuredParameters(Z, β, μ, c_p, c_c_e, m_e, ϵ_p, ϵ_c)
+        m_e = 2
+        c_c_e = 4
+        ax = Axis(gb[1, 1], title = "Productivity: $m_e, Claiming Cost: $c_c_e", xlabel = "Generation", ylabel = "Strategy prevalence")
+        pot_e = get_pot(1, m_e*c_p, m_e*c_p)
+        up_e = UnstructuredParameters(Z, β, μ, c_p, SA[1,0,1,1], SA[c_c_e, c_c_e, c_c_e, c_c_e], pot_e, ϵ_p, ϵ_c)
         S_initial = rand_S_initial_unstructured(Z)
+        # S_initial = [0, 0, Z, 0]
         for (row_i, row) in enumerate(eachrow(main_simulation_loop(S_initial, N_lineplots, up_e)))
             lines!(ax, 1:N_lineplots, row, color = strat_colours[row_i], linewidth = 3, alpha = 1)
         end
     end
+
     begin
-        ax = Axis(gb[1, 1], title = "Productivity: 1.5, Claiming Cost: 0.2", xlabel = "Generation", ylabel = "Strategy prevalence")
-        m_f = 1.5
-        c_c_f = 0.2
-        up_f = UnstructuredParameters(Z, β, μ, c_p, c_c_f, m_f, ϵ_p, ϵ_c)
+        m_f = 2.5
+        c_c_f = 2.1
+        ax = Axis(gb[2, 1], title = "Productivity: $m_f, Claiming Cost: $c_c_f", xlabel = "Generation", ylabel = "Strategy prevalence")
+        pot_f = get_pot(1, m_f*c_p, m_f*c_p)
+        up_f = UnstructuredParameters(Z, β, μ, c_p, SA[1,0,1,1], SA[c_c_f, c_c_f, c_c_f, c_c_f], pot_f, ϵ_p, ϵ_c)
         S_initial = rand_S_initial_unstructured(Z)
+        # S_initial = [Z, 0, 0, 0]
         for (row_i, row) in enumerate(eachrow(main_simulation_loop(S_initial, N_lineplots, up_f)))
             lines!(ax, 1:N_lineplots, row, color = strat_colours[row_i], linewidth = 3, alpha = 1)
         end
     end
+    
     Label(
         gb[1, 1, TopLeft()], "e",
         fontsize = 26,
@@ -117,7 +125,7 @@ begin
     rowsize!(ga, 2, Relative(0.42))
     rowgap!(ga, 0)
     elements = [MarkerElement(; marker = :rect, color = color, markersize = 20) for color in strat_colours]
-    Legend(gb[3, 1], elements, labels, "Strategies", orientation = :horizontal)
+    Legend(gb[3, :], elements, labels, "Strategies", orientation = :horizontal)
     for filetype in ("png", "pdf")
         save("figures/fig2.$filetype", fig2)
     end
