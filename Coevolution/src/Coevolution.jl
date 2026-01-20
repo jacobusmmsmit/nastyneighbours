@@ -22,7 +22,7 @@ include("unstructured.jl")
 export StructuredParameters, rand_S_initial_structured, rand_S_initial_structured!
 include("structured.jl")
 
-export HierarchyParameters, rand_S_initial_hierarchy, rand_S_initial_hierarchy!, sample_two_agents_without_replacement, calculate_hierarchy_bonus
-include("hierarchy.jl")
+export RevisedParameters, rand_S_initial_revised, rand_S_initial_revised!, sample_two_agents_without_replacement
+include("revised.jl")
 
 end # module Coevolution
