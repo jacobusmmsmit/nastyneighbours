@@ -4,69 +4,43 @@ using CairoMakie
 
 using Coevolution
 
-strategies = SVector{16,SVector{4,Bool}}(
+using ProgressMeter
+
+const strategies = SVector{16,SVector{4,Bool}}(
     SA[0, 0, 0, 0], SA[1, 0, 0, 0], SA[0, 1, 0, 0], SA[1, 1, 0, 0],
     SA[0, 0, 1, 0], SA[1, 0, 1, 0], SA[0, 1, 1, 0], SA[1, 1, 1, 0],
     SA[0, 0, 0, 1], SA[1, 0, 0, 1], SA[0, 1, 0, 1], SA[1, 1, 0, 1],
     SA[0, 0, 1, 1], SA[1, 0, 1, 1], SA[0, 1, 1, 1], SA[1, 1, 1, 1],
 )
 
-"""
-    get_cooperation_over_time(T)
-
-Takes the output of a simulation and turns it into an `n_groups × 4 × n_timesteps`
-array summarising how many individuals act cooperatively/competitively given
-each of the four contexts.
-
-Example output for one group, timestep pair: `[0, 5, 2, 1]` i.e. no one in this
-group at this time cooperated with the outgroup, 5 cooperated with the ingroup,
-2 competed with the outgroup, 1 competed with the ingroup.
-"""
-function get_cooperation_over_time(T)
-    n_groups, n_strategies, n_timesteps = size(T)
-    cooperation_per_context_per_group_per_timestep = zeros(Int, n_groups, 8, n_timesteps)
-    for timestep in 1:n_timesteps
-        @views S = T[:, :, timestep]
-        for (row_idx, strategy_counts) in enumerate(eachrow(S))
-            for (strategy, strategy_count) in zip(strategies, strategy_counts)
-                out_coop, out_comp, in_coop, in_comp = strategy
-                out_strategy = evalpoly(2, SA[out_coop, out_comp]) + 1
-                in_strategy = evalpoly(2, SA[in_coop, in_comp]) + 5
-                cooperation_per_context_per_group_per_timestep[row_idx, out_strategy, timestep] += strategy_count
-                cooperation_per_context_per_group_per_timestep[row_idx, in_strategy, timestep] += strategy_count
-            end
-        end
-    end
-    return cooperation_per_context_per_group_per_timestep
-end
+const group_agnostic_strategies = SVector{4,Int64}(findall(v -> (v[1] == v[3] && v[2] == v[4]), [SVector{4,Bool}((i - 1) >> shift & 1 != 0 for shift in 0:3) for i in 1:16]))
 
 begin
-    Zs = (15, 15)
-    β = 1
+    Z_group = 30
+    Zs = (Z_group, Z_group, Z_group, Z_group, Z_group, Z_group)
+    β = 1.0
     μ = 1 / sum(Zs)
-    c_p = 1
-    c_c = 2.1
+    α = 0.5 # Assortment of interactions
+    γ = 1.0 # Assortment of reproduction
+    vs = SA[1.0, 1, 1, 1] # Vulnerability of each strategy
+    c = 1.0 # Cost of contribution
     m_in = 2.5
-    m_out = 2.5
-    α = 0.9
-    ϵ_p = 0.01
-    ϵ_c = 0.01
-    n_migrants = maximum(Zs) ÷ 4
-    inequality = 0.0
-    hierarchy_strength = 0.9
-    N = 4_000
+    m_out = 2.0
+    ϵ_p = 0.01 # Error rate of production
+    ϵ_c = 0.01 # Error rate of competition
+    n_migrants = 2 # Migration rate
+    N = 10_000
 end
 
-m_range = range(1, 4, length=11)
-c_range = range(0, 3, length=11)
-S_initial = rand_S_initial_hierarchy(Zs)
-hp = HierarchyParameters(Zs, β, μ, c_p, c_c, m_in, m_out, α, ϵ_p, ϵ_c, n_migrants, inequality, hierarchy_strength)
-T = main_simulation_loop(S_initial, N, hp)
-@be main_simulation_loop(S_initial, N, hp)
-# get_cooperation_over_time(T);
+S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
+a = 1
+as = SVector{4,Float64}([a, a, a, a]) # Cost of aggressing against each strategy
+pots = (SA[1, m_in*c, 2(m_in*c)], SA[1, 0, 2(m_out*c)])
+rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
+T = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
 
 let
-    fig = Figure(size=(600, 400))
+    fig = Figure(size=(600, 100 + 150 * length(Zs)))
     # Rows = [group 1, group 2,..., group N], columns = [out-group, in-group] 
     axs = [Axis(fig[by_group, to_relation], xlabel="Timestep", ylabel="Group $by_group", title="$(to_relation==1 ? "Out-group" : "In-group")") for (by_group, to_relation) in Iterators.product(1:length(Zs), 1:2)]
     cooperation_per_context_per_group_per_timestep = get_cooperation_over_time(T)
@@ -79,18 +53,29 @@ let
             lines!(ax, cooperation_per_timestep, color=Cycled(strategy))
         end
     end
-    Legend(fig[1:2, 3], [LineElement(color=Cycled(i)) for i in 1:4], ["Free riders", "Producers", "Claimers", "PCs"])
+    linkaxes!(axs...)
+    Legend(fig[1:length(Zs), 3], [LineElement(color=Cycled(i)) for i in 1:4], ["Free riders", "Claimers", "Producers", "PCs"])
     fig
 end
 
-# 4x4
-S_initial = rand_S_initial_hierarchy(Zs)
-mean_strategy_count_matrix_grouped = map(Iterators.product(m_range, c_range)) do (m_in, c_c)
-    println("($m_in, $c_c)")
-    rand_S_initial_hierarchy!(S_initial, Zs)
-    hp = HierarchyParameters(Zs, β, μ, c_p, c_c, m_in, m_in, α, ϵ_p, ϵ_c, n_migrants, inequality, hierarchy_strength)
-    strategy_count_by_generation = main_simulation_loop(S_initial, N, hp)
-    dropdims(mean(strategy_count_by_generation, dims=(1, 3)), dims=(1, 3))
+l = 31
+m_range = range(1, 4, length=l)
+c_range = range(0, 3, length=l)
+
+# In-group strategy
+mean_strategy_count_matrix_grouped = [zeros(16) for i in m_range, j in c_range]
+iterator = collect(Iterators.product(m_range, c_range))
+@showprogress Threads.@threads for ij in 1:l^2
+    m, a = iterator[ij]
+    local m_in = m
+    local m_out = m
+    # rand_S_initial_revised!(S_initial, Zs)
+    S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
+    as = SA[a, a, a, a] # Cost of aggressing against each strategy
+    pots = (SA[1, m_in*c, 2(m_in*c)], SA[1, 0, 2(m_out*c)])
+    rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
+    strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
+    mean_strategy_count_matrix_grouped[ij] = dropdims(sum(strategy_count_by_generation, dims=(1, 3)), dims=(1, 3)) ./ N
 end
 
 let
@@ -100,7 +85,6 @@ let
         SA[0, 0, 0, 1], SA[1, 0, 0, 1], SA[0, 1, 0, 1], SA[1, 1, 0, 1],
         SA[0, 0, 1, 1], SA[1, 0, 1, 1], SA[0, 1, 1, 1], SA[1, 1, 1, 1]
     )
-
 
     output_matrix = reshape(
         [
@@ -150,16 +134,15 @@ let
                 m_range,
                 c_range,
                 output_matrix[idx],
-                colorrange=(0, Z_1 + Z_2),
+                colorrange=(0, sum(Zs)),
                 colormap=cmaps[idx]
             )
-            vl = vlines!(ax, [1.5], color=:black, linestyle=:dash)
+            vl = vlines!(ax, [m_out], color=:black, linestyle=:dash)
             push!(hms, hm)
         end
 
         Label(gl[2:3, 0, Makie.Left()], "Group-dependent Claiming", padding=(-10, 0, 0, 0), rotation=π / 2, font=:bold)
         Label(gl[5, 2:3, Makie.Bottom()], "Group-dependent Production", padding=(0, 0, -5, 0), rotation=0, font=:bold)
-
         Colorbar(gl[1, 5], hms[4], label="")
         Colorbar(gl[2, 5], hms[2], label="")
         Colorbar(gl[3, 5], hms[3], label="")
@@ -231,8 +214,59 @@ let
         Label(gl[4, 2:4, Makie.Top()], "D: Producers"; label_options...)
         # Colorbar(fig[:, 3], hms[1], colorrange=(0, 1), label="Number of agents")
         for filetype in ("png", "pdf")
-            save("figures/hierarchy/inequality_$(inequality)_$hierarchy_strength.$filetype", fig)
+            save("figures/revised/$(length(Zs))×$Z_group×[1,m,2m].$filetype", fig)
         end
         display(fig)
     end
-end
+end;
+
+
+# # Prevalence of strategies that fight the in-group should be higher than the prevalence of strategies that fight the out-group.
+
+# # Strategies that claim with the outgroup
+# findall(s -> s[1] == 1, strategies)
+# # strategies that claim with the in-group
+# findall(s -> s[3] == 1, strategies)
+
+# # How much more prevalent is in-group claiming across all parameter setups for a variety of group sizes
+# # ngs_range = (1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 24, 30, 40, 60)
+# ngs_range = [10, 12, 15, 20, 24, 30, 40, 60]
+# lcm_ngs = lcm(ngs_range...)
+# Z_groups = lcm_ngs .÷ ngs_range
+# results = zeros(length(ngs_range))
+# for Z_idx in 1:length(ngs_range)
+#     NG = ngs_range[Z_idx]
+#     local l = 5
+#     local m_range = range(1, 4, length=l)
+#     local c_range = range(0, 3, length=l)
+#     Zs = Tuple(lcm_ngs ÷ NG for _ in 1:NG)
+#     @show (Zs, sum(Zs))
+#     mean_strategy_count_matrix_grouped = [zeros(16) for i in m_range, j in c_range]
+#     iterator = collect(Iterators.product(m_range, c_range))
+#     Threads.@threads :greedy for ij in 1:l^2
+#         m, a = iterator[ij]
+#         # m = m_range[i]
+#         # for j in 1:l
+#         # a = c_range[j]
+#         println("($m, $a)")
+#         local m_in = m
+#         local m_out = m
+#         # rand_S_initial_revised!(S_initial, Zs)
+#         S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
+#         as = SA[a, a, a, a] # Cost of aggressing against each strategy
+#         pots = (SA[m_in*c, m_in*c, m_in*c], SA[m_out*c, m_out*c, (m_out*c)])
+#         rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
+#         strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
+#         mean_strategy_count_matrix_grouped[ij] = dropdims(sum(strategy_count_by_generation, dims=(1, 3)), dims=(1, 3)) ./ N
+#         # end
+#     end
+#     results[Z_idx] = mean(map(v -> sum(v[findall(s -> s[3] == 1, strategies)]) - sum(v[findall(s -> s[1] == 1, strategies)]), mean_strategy_count_matrix_grouped)) ./ sum(Zs)
+# end
+
+
+# fig = Figure(size=(600, 400))
+# ax = Axis(fig[1, 1], xlabel="Agents per group", ylabel="How much more prevalent is in-group competition?")
+# lines!(ax, Z_groups, results)
+# fig
+
+# # TODO change this from a parameterscan to individual runs.

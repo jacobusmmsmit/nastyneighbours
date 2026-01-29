@@ -12,7 +12,6 @@ function strategic_errors(strat::Integer, ϵD, ϵA)
     return strategic_errors(to_bin(strat), ϵD, ϵA)
 end
 
-
 # function payoff_from_interaction_old(si::SVector{2,Bool}, sj::SVector{2,Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
 #     i_claim, i_produce = si
 #     j_claim, j_produce = sj

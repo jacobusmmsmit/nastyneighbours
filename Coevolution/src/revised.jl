@@ -5,9 +5,9 @@ struct RevisedParameters{N}
     α::Float64 # Assortment of interactions
     γ::Float64 # Assortment of reproduction
     c::Float64 # Cost of contribution
-    vs::SVector{4, Float64} # Vulnerability of each strategy
-    as::SVector{4, Float64} # Cost of aggressing against each strategy
-    pots::NTuple{N, SVector{3, Float64}}
+    vs::SVector{4,Float64} # Vulnerability of each strategy
+    as::SVector{4,Float64} # Cost of aggressing against each strategy
+    pots::NTuple{2,SVector{3,Float64}}
     ϵ_p::Float64 # Error rate of production
     ϵ_c::Float64 # Error rate of competition
     n_migrants::Int64 # Migration rate
@@ -47,51 +47,58 @@ function average_utility(si::SVector{4,Bool}, gi::Integer, S, rp::RevisedParamet
     return U_si
 end
 
-function rand_S_initial_revised(Zs)
+function rand_S_initial_revised(Zs; strategy_set=1:16)
     res = zeros(Int, length(Zs), 16)
-    rand_S_initial_revised!(res, Zs)
+    rand_S_initial_revised!(res, Zs; strategy_set)
     return res
 end
 
-function rand_S_initial_revised!(res, Zs)
+function rand_S_initial_revised!(res, Zs; strategy_set=1:16)
     res .= 0
     for (i, Z) in enumerate(Zs)
         for _ in 1:Z
-            res[i, rand(1:16)] += 1
+            res[i, rand(strategy_set)] += 1
         end
     end
     return nothing
 end
 
-function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParameters{NG}) where {I<:Integer,NG}
+function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParameters{NG}; strategy_set=1:16) where {I<:Integer,NG}
     (; Zs, μ, β, n_migrants, γ) = rp
     n_agents = sum(Zs)
     S = copy(S_initial)
     T = zeros(Int, (NG, 16, N)) # Strategy by Group by Generation
-    # strategies = SVector{16,SVector{4,Bool}}(
-    #     SA[0, 0, 0, 0], SA[1, 0, 0, 0], SA[0, 1, 0, 0], SA[1, 1, 0, 0],
-    #     SA[0, 0, 1, 0], SA[1, 0, 1, 0], SA[0, 1, 1, 0], SA[1, 1, 1, 0],
-    #     SA[0, 0, 0, 1], SA[1, 0, 0, 1], SA[0, 1, 0, 1], SA[1, 1, 0, 1],
-    #     SA[0, 0, 1, 1], SA[1, 0, 1, 1], SA[0, 1, 1, 1], SA[1, 1, 1, 1],
-    # )
+    strategies = SVector{16,SVector{4,Bool}}(
+        SA[0, 0, 0, 0], SA[1, 0, 0, 0], SA[0, 1, 0, 0], SA[1, 1, 0, 0],
+        SA[0, 0, 1, 0], SA[1, 0, 1, 0], SA[0, 1, 1, 0], SA[1, 1, 1, 0],
+        SA[0, 0, 0, 1], SA[1, 0, 0, 1], SA[0, 1, 0, 1], SA[1, 1, 0, 1],
+        SA[0, 0, 1, 1], SA[1, 0, 1, 1], SA[0, 1, 1, 1], SA[1, 1, 1, 1],
+    )
     group_weights = FrequencyWeights(dropdims(sum(S, dims=2), dims=2))
     migrants = zeros(Int, NG, n_migrants)
-    swaps = Vector{Pair{Tuple{Int, Int}, Tuple{Int, Int}}}(undef, n_migrants*NG÷2)
+    swaps = Vector{Pair{Tuple{Int,Int},Tuple{Int,Int}}}(undef, n_migrants * NG ÷ 2)
     for G in 1:N
         for G_step in 1:n_agents # Strategy update
-            # Sample two agents in the same group as imitation only happens within the group
+            # Sample two agents from the population to perform imitation
             gi = sample(1:NG, group_weights)
-            gj = ifelse(rand() < γ, gi, rand_without(1:NG, gi))
+            if NG == 1
+                gj = gi
+            else
+                gj = ifelse(rand() < γ, gi, rand_without(1:NG, gi))
+            end
             i, j = sample_two_agents_without_replacement(S, gi, gj) # (i, j) .∈ Ref(1:16)
-            # Calculate the utility of all in-group members
             if rand() < μ
-                new_i = rand(1:16)
+                new_i = rand(strategy_set)
                 S[gi, i] -= 1
                 S[gi, new_i] += 1
             else
+                # Calculate the utility of the strategies
+                si = strategies[i]
+                sj = strategies[j]
                 U_i = average_utility(si, gi, S, rp)
                 U_j = average_utility(sj, gj, S, rp)
                 P_ij = inv(1 + exp(-β * (U_j - U_i)))
+                # Imitate with probability P_ij which depends on utility difference.
                 if rand() < P_ij
                     S[gi, i] -= 1
                     S[gi, j] += 1
@@ -103,13 +110,15 @@ function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParame
         for g in 1:NG
             migrants[g, :] .= sample(1:Zs[g], n_migrants, replace=false)
         end
-        # Pick two groups with available migrants, choose the first available
-        # migrants from those groups, add them to the list of swaps.
+        # Pick two groups (potentially the same) with available migrants, choose
+        # the first available migrants from those groups, add them to the list
+        # of swaps.
         n_migrants_per_group = [n_migrants for _ in 1:NG]
         counters = [1 for _ in 1:NG]
         swap_idx = 0
         while sum(n_migrants_per_group) > 0
             swap_idx += 1
+            # group_i and group_j may be the same
             group_i, group_j = sample_two_groups_without_replacement!(n_migrants_per_group)
             strat_i = get_strategy(migrants[group_i, counters[group_i]], @views(S[group_i, :]))
             strat_j = get_strategy(migrants[group_j, counters[group_j]], @views(S[group_j, :]))
@@ -119,6 +128,7 @@ function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParame
         end
         # Perform the swaps
         for swap in swaps
+            # [1] is the id, [2] is the strategy
             S[swap.first[1], swap.first[2]] -= 1
             S[swap.second[1], swap.second[2]] -= 1
             S[swap.first[1], swap.second[2]] += 1
@@ -131,7 +141,7 @@ end
 
 function rand_without(unitrange::UnitRange, j)
     _j = rand(unitrange.start:unitrange.stop-1)
-    return ifelse(_j < j, _j, _j+1)
+    return ifelse(_j < j, _j, _j + 1)
 end
 
 function get_strategy(i, S_g)
@@ -178,8 +188,37 @@ function sample_two_agents_without_replacement(S, gi, gj) # 4 allocs
         error("Something went wrong: $i, $j, $tot, $cumtot")
     else
         S_gj = @views S[gj, :]
-        si = sample(1:16, S_gi)
-        sj = sample(1:16, S_gj)
+        si = sample(1:16, FrequencyWeights(S_gi))
+        sj = sample(1:16, FrequencyWeights(S_gj))
         return (si, sj)
     end
+end
+
+"""
+    get_cooperation_over_time(T)
+
+Takes the output of a simulation and turns it into an `n_groups × 4 × n_timesteps`
+array summarising how many individuals act cooperatively/competitively given
+each of the four contexts.
+
+Example output for one group, timestep pair: `[0, 5, 2, 1]` i.e. no one in this
+group at this time cooperated with the outgroup, 5 cooperated with the ingroup,
+2 competed with the outgroup, 1 competed with the ingroup.
+"""
+function get_cooperation_over_time(T)
+    n_groups, n_strategies, n_timesteps = size(T)
+    cooperation_per_context_per_group_per_timestep = zeros(eltype(T), n_groups, 8, n_timesteps)
+    for timestep in 1:n_timesteps
+        @views S = T[:, :, timestep]
+        for (row_idx, strategy_counts) in enumerate(eachrow(S))
+            for (strategy, strategy_count) in zip(strategies, strategy_counts)
+                out_coop, out_comp, in_coop, in_comp = strategy
+                out_strategy = evalpoly(2, SA[out_coop, out_comp]) + 1
+                in_strategy = evalpoly(2, SA[in_coop, in_comp]) + 5
+                cooperation_per_context_per_group_per_timestep[row_idx, out_strategy, timestep] += strategy_count
+                cooperation_per_context_per_group_per_timestep[row_idx, in_strategy, timestep] += strategy_count
+            end
+        end
+    end
+    return cooperation_per_context_per_group_per_timestep
 end
