@@ -10,7 +10,6 @@ struct RevisedParameters{N}
     pots::NTuple{2,SVector{3,Float64}}
     ϵ_p::Float64 # Error rate of production
     ϵ_c::Float64 # Error rate of competition
-    n_migrants::Int64 # Migration rate
 end
 
 function average_utility(si::SVector{4,Bool}, gi::Integer, S, rp::RevisedParameters)
@@ -64,7 +63,7 @@ function rand_S_initial_revised!(res, Zs; strategy_set=1:16)
 end
 
 function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParameters{NG}; strategy_set=1:16) where {I<:Integer,NG}
-    (; Zs, μ, β, n_migrants, γ) = rp
+    (; Zs, μ, β, γ) = rp
     n_agents = sum(Zs)
     S = copy(S_initial)
     T = zeros(Int, (NG, 16, N)) # Strategy by Group by Generation
@@ -75,8 +74,6 @@ function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParame
         SA[0, 0, 1, 1], SA[1, 0, 1, 1], SA[0, 1, 1, 1], SA[1, 1, 1, 1],
     )
     group_weights = FrequencyWeights(dropdims(sum(S, dims=2), dims=2))
-    migrants = zeros(Int, NG, n_migrants)
-    swaps = Vector{Pair{Tuple{Int,Int},Tuple{Int,Int}}}(undef, n_migrants * NG ÷ 2)
     for G in 1:N
         for G_step in 1:n_agents # Strategy update
             # Sample two agents from the population to perform imitation
@@ -105,35 +102,6 @@ function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParame
                 end
             end
         end
-        # Migration: S[g, i] is the number of people playing the ith strategy in
-        # the gth group. Sample n_migrants from each group.
-        for g in 1:NG
-            migrants[g, :] .= sample(1:Zs[g], n_migrants, replace=false)
-        end
-        # Pick two groups (potentially the same) with available migrants, choose
-        # the first available migrants from those groups, add them to the list
-        # of swaps.
-        n_migrants_per_group = [n_migrants for _ in 1:NG]
-        counters = [1 for _ in 1:NG]
-        swap_idx = 0
-        while sum(n_migrants_per_group) > 0
-            swap_idx += 1
-            # group_i and group_j may be the same
-            group_i, group_j = sample_two_groups_without_replacement!(n_migrants_per_group)
-            strat_i = get_strategy(migrants[group_i, counters[group_i]], @views(S[group_i, :]))
-            strat_j = get_strategy(migrants[group_j, counters[group_j]], @views(S[group_j, :]))
-            swaps[swap_idx] = Pair((group_i, strat_i), (group_j, strat_j))
-            counters[group_i] += 1
-            counters[group_j] += 1
-        end
-        # Perform the swaps
-        for swap in swaps
-            # [1] is the id, [2] is the strategy
-            S[swap.first[1], swap.first[2]] -= 1
-            S[swap.second[1], swap.second[2]] -= 1
-            S[swap.first[1], swap.second[2]] += 1
-            S[swap.second[1], swap.first[2]] += 1
-        end
         @views T[:, :, G] .= S # Make a note of the current state of the population
     end
     return T
@@ -146,18 +114,6 @@ end
 
 function get_strategy(i, S_g)
     return findfirst(i .≤ cumsum(S_g))
-end
-
-function sample_two_groups_without_replacement!(n_migrants_per_group)
-    cs = cumsum(n_migrants_per_group)
-    i = rand(1:cs[end]) # choose a random agent
-    group_i = findfirst(i .<= cs) # determine their group
-    n_migrants_per_group[group_i] -= 1
-    cumsum!(cs, n_migrants_per_group)
-    j = rand(1:cs[end])
-    group_j = findfirst(j .<= cs) # determine their group
-    n_migrants_per_group[group_j] -= 1
-    return group_i, group_j
 end
 
 function sample_two_agents_without_replacement(S, gi, gj) # 4 allocs
