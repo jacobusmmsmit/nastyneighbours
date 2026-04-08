@@ -16,11 +16,13 @@ const strategies = SVector{16,SVector{4,Bool}}(
 const group_agnostic_strategies = SVector{4,Int64}(findall(v -> (v[1] == v[3] && v[2] == v[4]), [SVector{4,Bool}((i - 1) >> shift & 1 != 0 for shift in 0:3) for i in 1:16]))
 
 begin
-    Z_group = 30
-    Zs = (Z_group, Z_group, Z_group, Z_group, Z_group, Z_group)
-    β = 1.0
-    μ = 1 / sum(Zs)
-    α = 0.5 # Assortment of interactions
+    Z_group = 1
+    Zs = (Z_group, Z_group)
+    β = 10.0
+    μ_s = 1 / 100*sum(Zs)
+    μ_g = 1 / 100*sum(Zs)
+    ξ = 0.1
+    α = 0.9 # Assortment of interactions
     γ = 1.0 # Assortment of reproduction
     vs = SA[1.0, 1, 1, 1] # Vulnerability of each strategy
     c = 1.0 # Cost of contribution
@@ -28,16 +30,15 @@ begin
     m_out = 2.0
     ϵ_p = 0.01 # Error rate of production
     ϵ_c = 0.01 # Error rate of competition
-    n_migrants = 2 # Migration rate
-    N = 10_000
+    N = 100
 end
 
 S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
 a = 1
 as = SVector{4,Float64}([a, a, a, a]) # Cost of aggressing against each strategy
 pots = (SA[1, m_in*c, 2(m_in*c)], SA[1, 0, 2(m_out*c)])
-rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
-T = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
+rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c)
+@time T = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
 
 let
     fig = Figure(size=(600, 100 + 150 * length(Zs)))
@@ -73,7 +74,7 @@ iterator = collect(Iterators.product(m_range, c_range))
     S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
     as = SA[a, a, a, a] # Cost of aggressing against each strategy
     pots = (SA[1, m_in*c, 2(m_in*c)], SA[1, 0, 2(m_out*c)])
-    rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
+    rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c)
     strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
     mean_strategy_count_matrix_grouped[ij] = dropdims(sum(strategy_count_by_generation, dims=(1, 3)), dims=(1, 3)) ./ N
 end
