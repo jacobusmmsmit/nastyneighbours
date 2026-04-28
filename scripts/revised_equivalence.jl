@@ -1,10 +1,9 @@
 using StaticArrays
 using Random
 using CairoMakie
+using ProgressMeter
 
 using Coevolution
-
-using ProgressMeter
 
 const strategies = SVector{16,SVector{4,Bool}}(
     SA[0, 0, 0, 0], SA[1, 0, 0, 0], SA[0, 1, 0, 0], SA[1, 1, 0, 0],
@@ -16,21 +15,21 @@ const strategies = SVector{16,SVector{4,Bool}}(
 const group_agnostic_strategies = SVector{4,Int64}(findall(v -> (v[1] == v[3] && v[2] == v[4]), [SVector{4,Bool}((i - 1) >> shift & 1 != 0 for shift in 0:3) for i in 1:16]))
 
 begin
-    Z_group = 1
+    Z_group = 20
     Zs = (Z_group, Z_group)
-    β = 10.0
-    μ_s = 1 / 100*sum(Zs)
-    μ_g = 1 / 100*sum(Zs)
+    β = 1.0
+    μ_s = 1 / 100 * sum(Zs)
+    μ_g = 1 / 100 * sum(Zs)
     ξ = 0.1
     α = 0.9 # Assortment of interactions
     γ = 1.0 # Assortment of reproduction
     vs = SA[1.0, 1, 1, 1] # Vulnerability of each strategy
     c = 1.0 # Cost of contribution
     m_in = 2.5
-    m_out = 2.0
+    m_out = 2.5
     ϵ_p = 0.01 # Error rate of production
     ϵ_c = 0.01 # Error rate of competition
-    N = 100
+    N = 10000
 end
 
 S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
@@ -47,7 +46,7 @@ let
     cooperation_per_context_per_group_per_timestep = get_cooperation_over_time(T)
     for group in 1:length(Zs)
         engagement_per_context_per_timestep = @views cooperation_per_context_per_group_per_timestep[group, :, :]
-        display(engagement_per_context_per_timestep)
+        # display(engagement_per_context_per_timestep)
         for (entry, is_to_ingroup, strategy) in zip(1:8, (1, 1, 1, 1, 2, 2, 2, 2), (1, 2, 3, 4, 1, 2, 3, 4))
             ax = axs[group, is_to_ingroup]
             cooperation_per_timestep = @views engagement_per_context_per_timestep[entry, :]
@@ -215,7 +214,7 @@ let
         Label(gl[4, 2:4, Makie.Top()], "D: Producers"; label_options...)
         # Colorbar(fig[:, 3], hms[1], colorrange=(0, 1), label="Number of agents")
         for filetype in ("png", "pdf")
-            save("figures/revised/$(length(Zs))×$Z_group×[1,m,2m].$filetype", fig)
+            # save("figures/revised/$(length(Zs))×$Z_group×[1,m,2m].$filetype", fig)
         end
         display(fig)
     end

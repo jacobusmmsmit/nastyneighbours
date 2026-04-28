@@ -12,23 +12,13 @@ function strategic_errors(strat::Integer, ϵD, ϵA)
     return strategic_errors(to_bin(strat), ϵD, ϵA)
 end
 
-# function payoff_from_interaction_old(si::SVector{2,Bool}, sj::SVector{2,Bool}, c_p::Number, c_c::Number, m::Number, ϵ_p::Number, ϵ_c::Number)
-#     i_claim, i_produce = si
-#     j_claim, j_produce = sj
-#     common_resource = (i_produce + j_produce) * c_p * m
-#     i_partition = (i_claim & !j_claim) + 0.5(!xor(i_claim, j_claim))
-#     return common_resource * i_partition - (i_produce * c_p) - (i_claim * c_c)
-# end
-
-function get_payoff_matrix(pot::AbstractVector, c::Float64, vs::AbstractVector{Float64}, as::AbstractVector{Float64})
-    vN, vC, vP, vPC = vs
-    aN, aC, aP, aPC = as
+function get_payoff_matrix(pot::AbstractVector, c::Real, a::Real)
     #! format: off
     payoff_matrix = SA[
-        pot[1]/2                     1/2*(1 - vN)*pot[1]                 pot[2]/2                     1/2*(1 - vN)*pot[2];
-        -aN + 1/2*(1 + vN)*pot[1]    -aC + pot[1]/2                      -aP + 1/2*(1 + vP)*pot[2]    -aPC + 1/2*(1 - vC + vPC)*pot[2];
-        -c + pot[2]/2                -c + 1/2*(1 - vP)*pot[2]            -c + pot[3]/2                -c + 1/2*(1 - vP)*pot[3];
-        -aN - c + 1/2*(1 + vN)*pot[2]  -aC - c + 1/2*(1 + vC - vPC)*pot[2]  -aP - c + 1/2*(1 + vP)*pot[3]  -aPC - c + pot[3]/2
+        1/2         0               pot[1]/2    0;
+        1-a         1/2-a           pot[1]-a    pot[1]/2 - a;
+        pot[1]/2-a  -c              pot[2]/2-c  -c;
+        pot[1]-c-a  pot[1]/2-c-a    pot[2]-c    pot[2]/2-c-a
     ]
     #! format on
     return payoff_matrix

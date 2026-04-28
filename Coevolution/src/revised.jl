@@ -7,15 +7,14 @@ struct RevisedParameters{N}
     α::Float64 # Assortment of interactions
     γ::Float64 # Assortment of reproduction
     c::Float64 # Cost of contribution
-    vs::SVector{4,Float64} # Vulnerability of each strategy
-    as::SVector{4,Float64} # Cost of aggressing against each strategy
-    pots::NTuple{2,SVector{3,Float64}}
+    a::Float64 # Cost of aggressing
+    pots::NTuple{2,SVector{2,Float64}}
     ϵ_p::Float64 # Error rate of production
     ϵ_c::Float64 # Error rate of competition
 end
 
 function average_utility(si::SVector{4,Bool}, gi::Integer, S, rp::RevisedParameters{N}, group_weight_vector) where {N}
-    (; α, c, vs, as, pots, ϵ_p, ϵ_c) = rp
+    (; α, c, a, pots, ϵ_p, ϵ_c) = rp
     U_si = 0.0
     si_idx = evalpoly(2, si) + 1
     for (sj_claim_out, sj_produce_out, sj_claim_in, sj_produce_in, gj) in Iterators.product(false:true, false:true, false:true, false:true, 1:N)
@@ -42,7 +41,7 @@ function average_utility(si::SVector{4,Bool}, gi::Integer, S, rp::RevisedParamet
             println("Z_in: $Z_i, Z_out: $(group_weight_vector - Z_i), ")
             error("$si, $sj_popsize, sj_weight: $sj_weight, S_g: $(S[gi, :])")
         end
-        payoff_matrix = get_payoff_matrix(pot, c, vs, as)
+        payoff_matrix = get_payoff_matrix(pot, c, a)
         payoff_matrix_with_errors = add_errors_to_payoff_matrix(payoff_matrix, ϵ_p, ϵ_c)
         U_si += sj_weight * payoff_from_interaction(si_subset, sj_subset, payoff_matrix_with_errors)
     end
@@ -119,22 +118,22 @@ function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParame
                     group_weight_vector[gi] -= 1
                     group_weight_vector[new_g] += 1
                 else
-                    # Join the group of another agent depending on their payoff
-                    # Calculate the utility of the strategies
+                    # Join the group of another agent depending on their payoff.
+                    # First, calculate the utility of the strategies.
                     si = strategies[i]
                     sj = strategies[j]
                     U_i = average_utility(si, gi, S, rp, group_weight_vector)
                     U_j = average_utility(sj, gj, S, rp, group_weight_vector)
                     P_ij = inv(1 + exp(-β * (U_j - U_i)))
-                    # Imitate both strategy and group wp P_ij
+                    # Then imitate group i.e. join that group with probability P_ij.
+                    # Possible (depending on code) also imitate strategy.
                     if rand() < P_ij
                         S[gi, i] -= 1
-                        S[gj, i] += 1 # j for mutate strategy, i for mutate group only
+                        S[gj, j] += 1 # j for mutate strategy, i for mutate group only
                         group_weight_vector[gi] -= 1
                         group_weight_vector[gj] += 1
                     end
                 end
-
             end
         end
         @views T[:, :, G] .= S # Make a note of the current state of the population
