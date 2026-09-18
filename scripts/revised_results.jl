@@ -1,6 +1,7 @@
 using StaticArrays
 using Random
 using CairoMakie
+using ProgressMeter
 
 using Coevolution
 
@@ -12,78 +13,51 @@ const strategies = SVector{16,SVector{4,Bool}}(
 )
 
 begin
-    Zs = (30, 30)
+    Z_group = 10
+    Zs = (Z_group, Z_group, Z_group, Z_group, Z_group)
     β = 1.0
-    μ = 1 / sum(Zs)
-    α = 0.7 # Assortment of interactions
-    γ = 1.0 # Assortment of reproduction
-    vs = SA[1.0, 1, 1, 1] # Vulnerability of each strategy
+    μ_s = 1 / (1 * sum(Zs))
+    μ_g = 1 / (1 * sum(Zs))
+    ξ = 0.9 # Likelihood of strategic update as opposed to a group update
+    α = 0.9 # Assortment of interactions
+    γ = 0.9 # Assortment of reproduction
     c = 1.0 # Cost of contribution
-    m_in = 2.5
-    m_out = 2.0
-    a = 1.5
-    as = SA[a, a, a, a] # Cost of aggressing against each strategy
-    pots = (SA[1, 1/2, 2m_in*c], SA[1, 1/2, 2m_out*c])
     ϵ_p = 0.01 # Error rate of production
     ϵ_c = 0.01 # Error rate of competition
-    n_migrants = 1 # Migration rate
-    N = 2_000
+    N = 2 * Z_group^2
 end
 
-l = 31
-m_range = range(1, 4, length=l)
-c_range = range(0, 3, length=l)
-# S_initial = rand_S_initial_revised(Zs)
-# rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
-# T = main_simulation_loop(S_initial, N, rp)
+S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
+a = 1.0
+pots = (SA[1+2., 2(1+2)], SA[1+2., 2(1+2)])
+rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
+@b main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
 
+l = 41
+a_range = range(0, 4, length=l)
+b_range = range(0, 4, length=l)
 
-# let
-#     fig = Figure(size=(600, 100 + 150 * length(Zs)))
-#     # Rows = [group 1, group 2,..., group N], columns = [out-group, in-group] 
-#     axs = [Axis(fig[by_group, to_relation], xlabel="Timestep", ylabel="Group $by_group", title="$(to_relation==1 ? "Out-group" : "In-group")") for (by_group, to_relation) in Iterators.product(1:length(Zs), 1:2)]
-#     cooperation_per_context_per_group_per_timestep = get_cooperation_over_time(T)
-#     for group in 1:length(Zs)
-#         engagement_per_context_per_timestep = @views cooperation_per_context_per_group_per_timestep[group, :, :]
-#         display(engagement_per_context_per_timestep)
-#         for (entry, is_to_ingroup, strategy) in zip(1:8, (1, 1, 1, 1, 2, 2, 2, 2), (1, 2, 3, 4, 1, 2, 3, 4))
-#             ax = axs[group, is_to_ingroup]
-#             cooperation_per_timestep = @views engagement_per_context_per_timestep[entry, :]
-#             lines!(ax, cooperation_per_timestep, color=Cycled(strategy))
-#         end
-#     end
-#     linkaxes!(axs...)
-#     Legend(fig[1:length(Zs), 3], [LineElement(color=Cycled(i)) for i in 1:4], ["Free riders", "Producers", "Claimers", "PCs"])
-#     fig
-# end
+v1(b) = 1 + b
+v2(b) = (1 + b)^2
 
-# 4x4
-
-mean_strategy_count_matrix_grouped = [zeros(16) for i in m_range, j in c_range]
-for i in 1:l
-    m_in = m_range[i]
-    Threads.@threads for j in 1:l
-        a = c_range[j]
-        println("($m_in, $a)")
-        # rand_S_initial_revised!(S_initial, Zs)
-        S_initial = rand_S_initial_revised(Zs)
-        as = SA[a, a, a, a] # Cost of aggressing against each strategy
-        pots = (SA[0, m_in*c, 2(m_in*c)], SA[0, m_out*c, 2(m_out*c)])
-        rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
-        strategy_count_by_generation = main_simulation_loop(S_initial, N, rp)
-        mean_strategy_count_matrix_grouped[i, j] = dropdims(sum(strategy_count_by_generation, dims=(1, 3)), dims=(1, 3)) ./ N
+# Collect only the four agnostic strategies
+mean_strategy_count_matrix_grouped = let
+    M = [zeros(16) for i in b_range, j in a_range]
+    iterator = collect(Iterators.product(b_range, a_range))
+    @showprogress Threads.@threads for ij in 1:l^2
+        b, a = iterator[ij]
+        S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
+        pots = (SA[v1(b), v2(b)], SA[v1(b), v2(b)])
+        rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
+        strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
+        burn_in_period = N ÷ 10
+        collection_period = N - burn_in_period
+        M[ij] = dropdims(sum(strategy_count_by_generation[:, :, end-collection_period+1:end], dims=(1, 3)), dims=(1, 3)) ./ collection_period
     end
+    M
 end
 
-# mean_strategy_count_matrix_grouped = map(Iterators.product(m_range, c_range)) do (m_in, a)
-#     println("($m_in, $a)")
-#     rand_S_initial_revised!(S_initial, Zs)
-#     as = SA[a, a, a, a] # Cost of aggressing against each strategy
-#     pots = (SA[0, m_in*c, 2m_in*c], SA[0, m_out*c, 2m_out*c])
-#     rp = RevisedParameters(Zs, β, μ, α, γ, c, vs, as, pots, ϵ_p, ϵ_c, n_migrants)
-#     strategy_count_by_generation = main_simulation_loop(S_initial, N, rp)
-#     dropdims(mean(strategy_count_by_generation, dims=(1, 3)), dims=(1, 3))
-# end
+# Debugging
 
 let
     structured_strategies = SVector{16,SVector{4,Bool}}(
@@ -138,13 +112,13 @@ let
             end
             hm = heatmap!(
                 ax,
-                m_range,
-                c_range,
+                b_range,
+                a_range,
                 output_matrix[idx],
                 colorrange=(0, Zs[1]),
                 colormap=cmaps[idx]
             )
-            vl = vlines!(ax, [m_out], color=:black, linestyle=:dash)
+            # vl = vlines!(ax, [m_out], color=:black, linestyle=:dash)
             push!(hms, hm)
         end
 
@@ -221,7 +195,7 @@ let
         Label(gl[4, 2:4, Makie.Top()], "D: Producers"; label_options...)
         # Colorbar(fig[:, 3], hms[1], colorrange=(0, 1), label="Number of agents")
         for filetype in ("png", "pdf")
-            save("figures/revised/α=0.7-r=[1-0.5-2mc].$filetype", fig)
+            # save("figures/revised/α=0.7-r=[1-0.5-2mc].$filetype", fig)
         end
         display(fig)
     end

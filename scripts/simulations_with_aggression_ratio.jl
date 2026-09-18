@@ -1,8 +1,5 @@
-using StaticArrays
-using Random
 using CairoMakie
-using JLD2
-using ProgressMeter
+using StaticArrays
 
 using Coevolution
 
@@ -17,24 +14,24 @@ const group_agnostic_strategies = SVector{4,Int64}(findall(v -> (v[1] == v[3] &&
 
 begin
     Z_group = 50
-    Zs = (Z_group,)
+    Zs = (Z_group, Z_group)
     β = 1.0
     μ_s = 1 / 100 * sum(Zs)
     μ_g = 1 / 100 * sum(Zs)
     ξ = 1.0
-    α = 0.9 # Assortment of interactions
+    α = 0.5 # Assortment of interactions
     γ = 1.0 # Assortment of reproduction
     c = 1.0 # Cost of contribution
     ϵ_p = 0.01 # Error rate of production
     ϵ_c = 0.01 # Error rate of competition
-    N = 1_00
+    N = 1_000_000
 end
 
-S_initial = rand_S_initial_revised(Zs; strategy_set=group_agnostic_strategies)
+S_initial = rand_S_initial_revised(Zs; strategy_set=1:16)
 a = 10.00
 pots = (SA[1+2., 2(1+2)], SA[0., 2(1+2)])
 rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
-main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
+main_simulation_loop(S_initial, N, rp; strategy_set=1:16)
 
 l = 41
 a_range = range(0, 4, length=l)
@@ -43,13 +40,14 @@ b_range = range(0, 4, length=l)
 # In-group strategy
 mean_strategy_count_matrix_grouped = [zeros(16) for i in b_range, j in a_range]
 iterator = collect(Iterators.product(b_range, a_range))
-@showprogress Threads.@threads for ij in 1:l^2
+# @showprogress Threads.@threads 
+for ij in 1:(l^2)
     b, a = iterator[ij]
     S_initial = rand_S_initial_revised(Zs; strategy_set=group_agnostic_strategies)
     pots = (SA[1+b, 2(1+b)], SA[1+b, 2(1+b)])
     rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
     strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
-    mean_strategy_count_matrix_grouped[ij] = dropdims(sum(strategy_count_by_generation[:, :, 9N÷10:end], dims=(1, 3)), dims=(1, 3)) ./ (N ÷ 10)
+    mean_strategy_count_matrix_grouped[ij] = dropdims(sum(strategy_count_by_generation[:, :, (9N÷10):end], dims=(1, 3)), dims=(1, 3)) ./ (N ÷ 10)
 end
 
 mean_strategy_count_matrix_agnostic = let
@@ -68,7 +66,7 @@ begin
     for i in 1:2, j in 1:2
         fig[i, j] = GridLayout()
     end
-    axs = [Axis(fig[i, j][1, 1], aspect=1, xticks=0:5, yticks=0:5, xlabel="Benefit (b)", ylabel = "Cost of Aggression (a)") for i in 1:2, j in 1:2]
+    axs = [Axis(fig[i, j][1, 1], aspect=1, xticks=0:5, yticks=0:5, xlabel="Benefit (b)", ylabel="Cost of Aggression (a)") for i in 1:2, j in 1:2]
     cmaps = map(color -> cgrad([:white, color]), strat_colours)
     iterator = ((2, 1), (1, 1), (2, 2), (1, 2))
     titles = ["Claim but don't produce", "Neither claim or produce", "Produce and claim", "Produce but don't claim"]
@@ -76,11 +74,11 @@ begin
         i, j = iterator[idx]
         axs[idx].title = titles[idx]
         hm = heatmap!(
-            axs[i, j], 
+            axs[i, j],
             b_range,
             a_range,
             colormap=cmaps[idx],
-            getindex.(mean_strategy_count_matrix_agnostic, idx), 
+            getindex.(mean_strategy_count_matrix_agnostic, idx),
             colorrange=(0, sum(Zs)),
         )
         Colorbar(fig[i, j][1, 2], hm)

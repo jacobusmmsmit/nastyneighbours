@@ -89,7 +89,7 @@ begin
     ylims!(ax, (0 - 0.05, 1 + 0.05))
     lines!(Z2s_range, 1 .- difference, linewidth=2, color=Cycled(2))    
     for filetype in ["png", "pdf"]
-        save("./figures/revised/groupsize_nmigrants3.$filetype", fig)
+        # save("./figures/revised/groupsize_nmigrants3.$filetype", fig)
     end
     display(fig)
 end
