@@ -176,11 +176,9 @@ function rand_without(unitrange::UnitRange, j)
     return ifelse(_j < j, _j, _j + 1)
 end
 
-# function sample_without(weight_vector::MVector{NG,I}, j) where {NG,I<:Integer}
-#     weights_without = SVector{NG-1,Int64}(weight_vector[i] for i in 1:NG if i != j)
-#     _j = sample(1:(NG-1), FrequencyWeights(weights_without))
-#     return ifelse(_j < j, _j, _j + 1)
-# end
+function get_strategy(i, S_g)
+    return findfirst(i .≤ cumsum(S_g))
+end
 
 @inline function sample_without(weights, j, total)
     total_without = total - weights[j]
@@ -191,10 +189,6 @@ end
         r ≤ 0 && return g
     end
     return lastindex(weights)
-end
-
-function get_strategy(i, S_g)
-    return findfirst(i .≤ cumsum(S_g))
 end
 
 @inline function sample_two_same_group(S_gi)
@@ -230,6 +224,38 @@ end
         r ≤ 0 && return idx
     end
     return 16
+end
+
+@inline function sample_strategy(S, g, total)
+    r = rand(1:total)
+
+    @inbounds for i in 1:16
+        r -= S[g, i]
+        r ≤ 0 && return i
+    end
+
+    return 16
+end
+
+@inline function sample_two_same_group(S, g, total)
+    i = rand(1:total)
+
+    j = rand(1:total - 1)
+    j += (j >= i)
+
+    s_i = 1
+    @inbounds while i > S[g, s_i]
+        i -= S[g, s_i]
+        s_i += 1
+    end
+
+    s_j = 1
+    @inbounds while j > S[g, s_j]
+        j -= S[g, s_j]
+        s_j += 1
+    end
+
+    return s_i, s_j
 end
 
 function sample_two_agents_without_replacement(S, gi, gj) # 4 allocs
@@ -274,11 +300,9 @@ end
 
 @inline function sample_group(weights, total)
     r = rand(1:total)
-
     @inbounds for g in eachindex(weights)
         r -= weights[g]
         r ≤ 0 && return g
     end
-
     return lastindex(weights)
 end

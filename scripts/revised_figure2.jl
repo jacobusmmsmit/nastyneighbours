@@ -44,7 +44,7 @@ a_range = range(0, 4, length=l)
 b_range = range(0, 4, length=l)
 
 v1(b) = 1 + b
-v2(b) = (1 + b)^2
+v2(b) = 2(1 + b)
 
 # Collect only the four agnostic strategies
 mean_strategy_count_matrix_grouped = let
@@ -84,38 +84,15 @@ begin
             )
             cb = Colorbar(ga[3-j, 2i], hm, label="Number of agents", tellheight=true)
             cb.height = Relative(0.73)
-            # # Freeriders polygon
-            # poly!(
-            #     [Point2f(-1, 1 / 2), Point2f(3 / 2, 1 / 2), Point2f(2, 1), Point2f(2, 10), Point2f(-1, 10)],
-            #     strokecolor=(strat_colours[1], 1),
-            #     strokewidth=2,
-            #     # linestyle=:dash,
-            #     color=(:black,0.0)
-            # )
-            # # Claiming polygon
-            # poly!(
-            #     [Point2f(-1, -1), Point2f(2, -1), Point2f(2, 1 / 2), Point2f(-1, 1 / 2)],
-            #     strokecolor=(strat_colours[2], 1),
-            #     strokewidth=2,
-            #     # linestyle=:dash,
-            #     color=(:black, 0.0),
-            # )
-            # # PC
-            # poly!(
-            #     [Point2f(1, -1), Point2f(1, 1), Point2f(6, 6), Point2f(6, -1)],
-            #     strokecolor=(strat_colours[4], 1),
-            #     strokewidth=2,
-            #     # linestyle=:dash,
-            #     color=(:black, 0.0),
-            # )
-            # Regions for v1 = 1+b, v2 = (1+b)^2
+            # Freeriders polygon
             poly!(
                 [Point2f(-1, 1 / 2), Point2f(3 / 2, 1 / 2), Point2f(2, 1), Point2f(2, 10), Point2f(-1, 10)],
                 strokecolor=(strat_colours[1], 1),
                 strokewidth=2,
                 # linestyle=:dash,
-                color=(:black,  0.0)
+                color=(:black,0.0)
             )
+            # Claiming polygon
             poly!(
                 [Point2f(-1, -1), Point2f(2, -1), Point2f(2, 1 / 2), Point2f(-1, 1 / 2)],
                 strokecolor=(strat_colours[2], 1),
@@ -123,13 +100,36 @@ begin
                 # linestyle=:dash,
                 color=(:black, 0.0),
             )
+            # PC
             poly!(
-                [Point2f(1, -3), Point2f.(1:0.25:5, (b -> (1 / 2) * (b^2 + 2b - 1)).(1:0.25:5))..., Point2f(5, -3)],
+                [Point2f(1, -1), Point2f(1, 1), Point2f(6, 6), Point2f(6, -1)],
                 strokecolor=(strat_colours[4], 1),
                 strokewidth=2,
                 # linestyle=:dash,
                 color=(:black, 0.0),
             )
+            # Regions for v1 = 1+b, v2 = (1+b)^2
+            # poly!(
+            #     [Point2f(-1, 1 / 2), Point2f(3 / 2, 1 / 2), Point2f(2, 1), Point2f(2, 10), Point2f(-1, 10)],
+            #     strokecolor=(strat_colours[1], 1),
+            #     strokewidth=2,
+            #     # linestyle=:dash,
+            #     color=(:black,  0.0)
+            # )
+            # poly!(
+            #     [Point2f(-1, -1), Point2f(2, -1), Point2f(2, 1 / 2), Point2f(-1, 1 / 2)],
+            #     strokecolor=(strat_colours[2], 1),
+            #     strokewidth=2,
+            #     # linestyle=:dash,
+            #     color=(:black, 0.0),
+            # )
+            # poly!(
+            #     [Point2f(1, -3), Point2f.(1:0.25:5, (b -> (1 / 2) * (b^2 + 2b - 1)).(1:0.25:5))..., Point2f(5, -3)],
+            #     strokecolor=(strat_colours[4], 1),
+            #     strokewidth=2,
+            #     # linestyle=:dash,
+            #     color=(:black, 0.0),
+            # )
             limits!(ax, (0, 4), (0, 4))
         end
         for (label, pos) in zip(["a", "b", "c", "d"], [[1, 1], [1, 3], [2, 1], [2, 3]])
@@ -184,10 +184,12 @@ begin
     rowsize!(ga, 2, Relative(0.42))
     rowgap!(ga, 0)
     for filetype in ("png", "pdf")
-        # save("figures/revised/fig2_v1_1+b_v2_(1+b)^2_$(N)_$(l).$filetype", fig2)
+        save("figures/revised/fig2_v1_1+b_v2_2(1+b)_$(N)_$(l).$filetype", fig2)
     end
     display(fig2)
 end
+
+
 
 # cmaps = [getindex(cgrads, group) for group in [1, 2, 3, 4, 2, 2, 4, 4, 3, 4, 3, 4, 4, 4, 4, 4]]
 

@@ -46,7 +46,7 @@ rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
 begin
     Profile.Allocs.clear()
     main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
-    Profile.Allocs.@profile sample_rate=0.001 main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
+    Profile.Allocs.@profile sample_rate=1 main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
     PProf.Allocs.pprof(from_c=false)
 end
 
