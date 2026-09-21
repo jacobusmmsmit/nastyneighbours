@@ -50,7 +50,7 @@ v2(b) = 2(1 + b)
 mean_strategy_count_matrix_grouped = let
     M = [zeros(4) for i in b_range, j in a_range]
     iterator = collect(Iterators.product(b_range, a_range))
-    @showprogress Threads.@threads for ij in 1:l^2
+    @showprogress Threads.@threads for ij in 1:(l^2)
         b, a = iterator[ij]
         S_initial = rand_S_initial_revised(Zs; strategy_set=group_agnostic_strategies)
         pots = (SA[v1(b), v2(b)], SA[v1(b), v2(b)])
@@ -58,7 +58,7 @@ mean_strategy_count_matrix_grouped = let
         strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
         burn_in_period = N ÷ 10
         collection_period = N - burn_in_period
-        M[ij] = dropdims(sum(strategy_count_by_generation[:, :, end-collection_period+1:end], dims=(1, 3)), dims=(1, 3))[[1, 6, 11, 16]] ./ collection_period
+        M[ij] = dropdims(sum(strategy_count_by_generation[:, :, (end-collection_period+1):end], dims=(1, 3)), dims=(1, 3))[[1, 6, 11, 16]] ./ collection_period
     end
     M
 end
@@ -90,7 +90,7 @@ begin
                 strokecolor=(strat_colours[1], 1),
                 strokewidth=2,
                 # linestyle=:dash,
-                color=(:black,0.0)
+                color=(:black, 0.0)
             )
             # Claiming polygon
             poly!(
@@ -153,7 +153,7 @@ begin
     rp_e = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots_e, ϵ_p, ϵ_c)
     strategy_count_by_generation_e = main_simulation_loop(S_initial, N_e, rp_e; strategy_set=group_agnostic_strategies)
     for row_i in 0:3
-        row = vec(sum(strategy_count_by_generation_e[:, (1:4).+4row_i, :], dims=(1, 2)))
+        row = vec(sum(strategy_count_by_generation_e[:, (1:4) .+ 4row_i, :], dims=(1, 2)))
         lines!(ax, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
     end
     b_f = 2.5
@@ -162,7 +162,7 @@ begin
     rp_f = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a_f, pots_f, ϵ_p, ϵ_c)
     strategy_count_by_generation_f = main_simulation_loop(S_initial, N_e, rp_f; strategy_set=group_agnostic_strategies)
     for row_i in 0:3
-        row = vec(sum(strategy_count_by_generation_f[:, (1:4).+4row_i, :], dims=(1, 2)))
+        row = vec(sum(strategy_count_by_generation_f[:, (1:4) .+ 4row_i, :], dims=(1, 2)))
         lines!(ax2, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
     end
     elements = [MarkerElement(; marker=:rect, color=color, markersize=20) for color in strat_colours]
@@ -342,7 +342,7 @@ let
     fig = Figure()
     ax = Axis(fig[1, 1])
     for row_i in 0:3
-        row = vec(sum(strategy_count_by_generation[:, (1:4).+4row_i, :], dims=(1, 2)))
+        row = vec(sum(strategy_count_by_generation[:, (1:4) .+ 4row_i, :], dims=(1, 2)))
         lines!(ax, row, linewidth=3, alpha=1, label="$(row_i - 16)", color=strat_colours[row_i+1])
     end
     fig
@@ -363,7 +363,7 @@ let
         ϵ_c = 0.01 # Error rate of competition
         # N = 50
     end
-    iterator = [(i, j) for i in 0:Z_group for j in 0:Z_group-i]
+    iterator = [(i, j) for i in 0:Z_group for j in 0:(Z_group-i)]
     for (n_freeriders, n_produceclaimers) in iterator
         n_claimers = Z_group - (n_freeriders + n_produceclaimers)
         S_initial = reshape([n_freeriders, 0, 0, 0, 0, n_claimers, 0, 0, 0, 0, 0, 0, 0, 0, 0, n_produceclaimers], 1, 16)
@@ -392,7 +392,7 @@ let
     a_f = 3.5
     local b = b_f
     local a = a_f
-    iterator = [(i, j) for i in 0:Z_group for j in 0:Z_group-i]
+    iterator = [(i, j) for i in 0:Z_group for j in 0:(Z_group-i)]
     dirs = let
         M = zeros(Point2d, Z_group + 1, Z_group + 1)
         @showprogress Threads.@threads for (n_freeriders, n_produceclaimers) in iterator
@@ -401,7 +401,7 @@ let
             S_initial = reshape([n_freeriders, 0, 0, 0, 0, 0, 0, 0, 0, 0, n_claimers, 0, 0, 0, 0, n_produceclaimers], 1, 16)
             pots = (SA[1+b, 2(1+b)], SA[1+b, 2(1+b)])
             rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
-            n_freeriders_end, n_produceclaimers_end = mean(main_simulation_loop(S_initial, N, rp; strategy_set=SA[1, 11, 16])[1, [1, 16], end] for _ in 1:N^2)
+            n_freeriders_end, n_produceclaimers_end = mean(main_simulation_loop(S_initial, N, rp; strategy_set=SA[1, 11, 16])[1, [1, 16], end] for _ in 1:(N^2))
             dir = Point2d(n_freeriders_end - n_freeriders, n_produceclaimers_end - n_produceclaimers)
             M[n_freeriders+1, n_produceclaimers+1] = dir
         end

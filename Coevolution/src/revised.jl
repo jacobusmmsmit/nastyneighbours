@@ -116,9 +116,9 @@ function main_simulation_loop(S_initial::AbstractMatrix{I}, N, rp::RevisedParame
                 gj = ifelse(
                     group_weight_vector[gi] == n_agents || (imitate_ingroup && (group_weight_vector[gi] > 1)),
                     gi,
-                    sample_without(group_weight_vector, gi))
+                    sample_without(group_weight_vector, gi, n_agents))
             end
-            i, j = sample_two_agents_without_replacement(S, gi, gj) # (i, j) .∈ Ref(1:16)
+            i, j = sample_two_agents_without_replacement(S, gi, gj, group_weight_vector) # (i, j) .∈ Ref(1:16)
             if rand() < ξ
                 # Strategy update
                 if rand() < μ_s
@@ -195,7 +195,7 @@ end
     tot = sum(S_gi)
 
     i = rand(1:tot)
-    j = rand(1:tot - 1)
+    j = rand(1:(tot-1))
     j += (j >= i)
 
     s_i = 1
@@ -239,8 +239,7 @@ end
 
 @inline function sample_two_same_group(S, g, total)
     i = rand(1:total)
-
-    j = rand(1:total - 1)
+    j = rand(1:(total-1))
     j += (j >= i)
 
     s_i = 1
@@ -258,14 +257,20 @@ end
     return s_i, s_j
 end
 
-function sample_two_agents_without_replacement(S, gi, gj) # 4 allocs
-    S_gi = @views S[gi, :]
+@inline function sample_two_agents_without_replacement(S, gi, gj, group_weights)
+    total_i = group_weights[gi]
     if gi == gj
-        si, sj = sample_two_same_group(S_gi)
+        return sample_two_same_group(
+            S,
+            gi,
+            total_i,
+        )
     else
-        si = sample_strategy(S, gi, tot_i)
-        sj = sample_strategy(S, gj, tot_j)
-        return (si, sj)
+        total_j = group_weights[gj]
+        return (
+            sample_strategy(S, gi, total_i),
+            sample_strategy(S, gj, total_j),
+        )
     end
 end
 

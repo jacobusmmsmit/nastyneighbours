@@ -20,13 +20,13 @@ const group_agnostic_strategies = SVector{4,Int64}(findall(v -> (v[1] == v[3] &&
 
 begin
     Z_group = 50
-    Zs = (Z_group,)
+    Zs = (Z_group, Z_group,)
     β = 1.0
     μ_s = 1 / (1 * sum(Zs))
     μ_g = 1 / (1 * sum(Zs))
     ξ = 1.0 # Likelihood of strategic update as opposed to a group update
-    α = 1.0 # Assortment of interactions
-    γ = 1.0 # Assortment of reproduction
+    α = 0.9 # Assortment of interactions
+    γ = 0.9 # Assortment of reproduction
     c = 1.0 # Cost of contribution
     ϵ_p = 0.01 # Error rate of production
     ϵ_c = 0.01 # Error rate of competition
@@ -43,25 +43,20 @@ S_initial = rand_S_initial_revised(Zs; strategy_set=group_agnostic_strategies)
 rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
 @b main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
 
-begin
-    Profile.Allocs.clear()
-    main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
-    Profile.Allocs.@profile sample_rate=1 main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
-    PProf.Allocs.pprof(from_c=false)
-end
-
 l = 6
-α_range = range(0, 1, length=l)
+ξ_range = range(0, 1, length=l)
 γ_range = range(0, 1, length=l)
 
 # Collect only the four agnostic strategies
 mean_strategy_count_matrix_grouped = let
-    M = [zeros(4) for i in α_range, j in γ_range]
-    iterator = collect(Iterators.product(α_range, γ_range))
+    M = [zeros(4) for i in ξ_range, j in α_range]
+    iterator = collect(Iterators.product(ξ_range, γ_range))
     @showprogress Threads.@threads for ij in 1:(l^2)
-        α, γ = iterator[ij]
+        ξ, γ = iterator[ij]
         S_initial = rand_S_initial_revised(Zs; strategy_set=group_agnostic_strategies)
-        rp = RevisedParameters(Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c)
+        rp = RevisedParameters(
+            Zs, β, μ_s, μ_g, ξ, α, γ, c, a, pots, ϵ_p, ϵ_c
+        )
         strategy_count_by_generation = main_simulation_loop(S_initial, N, rp; strategy_set=group_agnostic_strategies)
         burn_in_period = N ÷ 10
         collection_period = N - burn_in_period
@@ -78,12 +73,12 @@ begin
         for i in 1:2, j in 1:2
             idx = 2(i - 1) + (j - 1)
             ax = Axis(ga[3-j, 2i-1]; aspect=1)
-            ax.xlabel = "Interaction Assortment (α)"
-            ax.ylabel = "Reproduction Assortment (γ)"
+            ax.ylabel = "Migration Rate (ξ)"
+            ax.xlabel = "Reproduction Assortment (γ)"
             ax.title = labels[idx+1]
             hm = heatmap!(
                 ax,
-                α_range,
+                ξ_range,
                 γ_range,
                 getindex.(mean_strategy_count_matrix_grouped, idx + 1),
                 colorrange=(0, sum(Zs)),
